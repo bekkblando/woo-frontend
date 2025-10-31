@@ -33,49 +33,7 @@ const RequestForm = () => {
         }
     };
 
-    useEffect(() => {
-        const saveUnsavedQuestions = async () => {
-            const wooRequestId = searchParams.get('wooRequestId');
-            
-            if (!wooRequestId) return;
-            
-            // Find all unsaved questions
-            const unsavedQuestions = requestForm.questions.filter(q => !q.saved);
-            
-            if (unsavedQuestions.length === 0) return;
-            
-            // Save each unsaved question
-            for (const question of unsavedQuestions) {
-                try {
-                    const res = await fetch(`${BACKEND_URL}/api/woo-questions/`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ 
-                            question: question.question, 
-                            woo_request: parseInt(wooRequestId) 
-                        })
-                    });
-                    
-                    if (!res.ok) {
-                        throw new Error(`Failed to save question: ${question.question}`);
-                    }
-                    
-                    const data = await res.json();
-                    
-                    // Mark the question as saved
-                    requestForm.setQuestions(requestForm.questions.map(q => 
-                        q.question === question.question 
-                            ? { ...q, id: data.id, saved: true } 
-                            : q
-                    ));
-                } catch (e) {
-                    console.error("Failed to save question", e);
-                }
-            }
-        };
-        
-        saveUnsavedQuestions();
-    }, [searchParams, requestForm.questions, requestForm.setQuestions]);
+  
 
     console.log("Request form questions", requestForm.questions);
     return (

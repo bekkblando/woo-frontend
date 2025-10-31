@@ -61,7 +61,7 @@ const RequestMaker = () => {
     };
 
     fetchConversation();
-  }, [chatId]);
+  }, []);
 
 
     return (
