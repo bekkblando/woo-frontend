@@ -2,7 +2,7 @@ import { useContext, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import useChat from "../hooks/useChat";
 import TypewriterStreaming from "./ui/typewriter-streaming.tsx";
-import { IconSend } from "@tabler/icons-react";
+import {  IconMicrophone, IconSend2 } from "@tabler/icons-react";
 import { RequestFormContext } from "../context/RequestFormContext.tsx";
 
 
@@ -78,11 +78,11 @@ const Chat = ({ initialMessages }: ChatProps) => {
     };
 
     return (
-        <div className="h-full flex flex-col bg-white">
-            <div className="flex-1 overflow-y-auto p-4 md:p-8">
+        <div className="rounded-lg flex flex-col bg-[#EFF7FC] border-2 border-[#03689B]">
+            <div className="flex-1 overflow-y-auto p-2 md:p-8">
                 {messages.map((message: { role: string; content: string }, index: number) => (
                     <div key={index} className={`flex ${message.role === "assistant" ? "justify-start" : "justify-end"} w-full mb-2`}>
-                        <div className="max-w-[80%] whitespace-pre-wrap text-[#154273]">
+                        <div className="max-w-[80%] bg-[#EFF7FC] border-2 border-[#03689B] p-2 rounded-md whitespace-pre-wrap text-[#154273]">
                             {message.content === animatedText ? null : message.content}
                         </div>
                     </div>
@@ -96,19 +96,20 @@ const Chat = ({ initialMessages }: ChatProps) => {
                 )}
                 <div ref={bottomOfChatContainer} />
             </div>
-            <div className="p-3 flex items-center gap-2 border-t border-[#154273]/20 bg-white">
+            <div className="px-2 flex items-center gap-2">
                 <input
-                    className="flex-1 bg-white text-[#154273] text-base outline-none placeholder:text-[#154273]/60 border border-[#154273]/30 rounded px-3 py-2"
+                    className="flex-1 bg-transparent text-[#154273] text-lg outline-none placeholder:text-[#154273]/60 border-0 py-4"
                     type="text"
                     value={content}
                     onChange={(e) => setContent(e.target.value)}
-                    placeholder="Type a message"
+                    placeholder="Hoe kunnen we je helpen? Stel hier je vraag."
                     onKeyDown={(e) => {
                         if (e.key === "Enter") submitContent();
                     }}
                 />
-                <button className="bg-[#154273] text-white px-3 py-2 rounded" onClick={submitContent} aria-label="Send">
-                    <IconSend />
+                <IconMicrophone className="inline-block"/>
+                <button className="px-3 py-1" onClick={submitContent} aria-label="Send">
+                    <IconSend2 />
                 </button>
             </div>
         </div>

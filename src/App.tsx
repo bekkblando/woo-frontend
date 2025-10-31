@@ -1,13 +1,16 @@
-
 import './App.css'
-import RequestMaker from './pages/RequestMaker'
+import { Routes, Route } from 'react-router-dom'
 import { RequestFormProvider } from './context/RequestFormContext'
+import Landing from './pages/Landing'
+import RequestMaker from './pages/RequestMaker'
 
 function App() {
-
   return (
     <RequestFormProvider>
-      <RequestMaker />
+      <Routes>
+        <Route path="/" element={<Landing />} />
+        <Route path="/request" element={<RequestMaker />} />
+      </Routes>
     </RequestFormProvider>
   )
 }

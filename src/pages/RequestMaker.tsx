@@ -3,6 +3,7 @@ import RequestForm from '../components/RequestForm'
 import { useSearchParams } from 'react-router-dom'
 import { useContext, useEffect, useState } from 'react'
 import { RequestFormContext } from '../context/RequestFormContext';
+import { IconUser } from '@tabler/icons-react';
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://127.0.0.1:8000";
 
@@ -64,23 +65,39 @@ const RequestMaker = () => {
   }, []);
 
 
+
     return (
-        <div>
-      <div className="h-screen min-h-screen bg-[#f7f7f7] flex">
-        <div className="w-[35%] min-w-[320px] h-full border-r border-[#154273]/10 bg-white">
-          <RequestForm />
-        </div>
-        <div className="flex-1 h-full">
+      <div className="w-full flex flex-col justify-center">
+        <div className="w-full flex justify-between items-center px-2">
+      <div className="text-[15px] font-bold">
+          VraagMijnOverheid
+      </div>
+      <img src="/public/government-logo.png" alt="Woo Logo" className="h-12" />
+      <div className="text-sm text-[#154475]">
+          <IconUser className="inline-block"/>
+          <span className="inline-block ml-2 justify-center items-center pt-1">Inloggen</span>
+      </div>
+      </div>
+      <div className="bg-[#EFF7FC] w-full h-4"></div>
+      <div className="bg-[#f7f7f7] flex gap-12 p-6">
+        <div className="w-1/2">
+         <div className="text-2xl font-bold pb-4">MijnVraag</div>
+         <div className="text-sm pb-6">Bespreek hier jouw vraag.</div>
           {loading ? (
-            <div className="h-full flex items-center justify-center">
-              <div className="text-[#154273]">Loading conversation...</div>
-            </div>
+          <div className="h-full flex items-center justify-center">
+            <div className="text-[#154273]">Loading conversation...</div>
+          </div>
           ) : (
             <Chat initialMessages={initialMessages} />
           )}
         </div>
-      </div>
+        <div className="w-1/2">
+          <div className="text-2xl font-bold pb-4">MijnVerzoek</div>
+          <div className="text-sm pb-6">Hier maken we een verzoek voor je klaar. Je kunt dit versturen via dit platform of kopieëren en aanpassen. Dan kun je jouw verzoek versturen per mail.</div>
+            <RequestForm />
         </div>
+      </div>
+    </div>
     );
 };
 
