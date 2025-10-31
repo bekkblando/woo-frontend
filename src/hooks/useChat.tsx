@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import ReconnectingWebSocket from 'reconnecting-websocket';
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://127.0.0.1:8000";
 
@@ -48,7 +49,7 @@ const useChat = (conversationId: string | null, functionsCaller: (functionDefini
     const [loading, setLoading] = useState<boolean>(!(initialMessages && initialMessages.length > 0));
     const [searchParams, setSearchParams] = useSearchParams();
     const [currentMessageKey, setCurrentMessageKey] = useState<string>(generateSecureRandomKey());
-    const wsRef = useRef<WebSocket | null>(null);
+    const wsRef = useRef<ReconnectingWebSocket | null>(null);
 
 
     // Update messages if initialMessages change (e.g., when conversation is loaded)
@@ -62,7 +63,7 @@ const useChat = (conversationId: string | null, functionsCaller: (functionDefini
     useEffect(() => {
         // Initialize websocket connection
         const wsUrl = BACKEND_URL.replace(/^http/, 'ws') + '/ws/conversation/';
-        const ws = new WebSocket(wsUrl);
+        const ws = new ReconnectingWebSocket(wsUrl);
         wsRef.current = ws;
         let messageContent = "";
 
@@ -80,18 +81,33 @@ const useChat = (conversationId: string | null, functionsCaller: (functionDefini
         ws.onmessage = (event: MessageEvent) => {
             try {
                 const parsedChunk = JSON.parse(event.data);
-                console.log('Parsed chunk', parsedChunk);
-                if (parsedChunk.message) {
+                console.log('Parsed chunk', parsedChunk, parsedChunk.type === "woo_question_answered");
+                if (parsedChunk.type === "woo_question_answered") {
+                    console.log('Parsed chunk answer', parsedChunk);
+                    console.log('Received woo question answered', parsedChunk.data);
+                    functionsCaller({
+                        name: "woo_question_answered",
+                        arguments: parsedChunk.data
+                    });
+                } else if (parsedChunk.message) {
                     console.log('Received message', parsedChunk.message);
                     messageContent += parsedChunk.message;
                     setAnimatedText(prev => prev + parsedChunk.message);
                     console.log('Animated text', animatedText);
-                } else if (parsedChunk.function_call) {
-                    const fullFunctionCallDefinition = {
-                        name: parsedChunk.function_call.name,
-                        arguments: parsedChunk.function_call.arguments
-                    };
-                    functionsCaller(fullFunctionCallDefinition);
+                } else if (parsedChunk.tool_calls) {
+                    // Handle modern tool_calls format
+                    const toolCalls = parsedChunk.tool_calls;
+                    if (toolCalls && toolCalls.length > 0) {
+                        // Use the first tool call (most common case)
+                        const firstTool = toolCalls[0];
+                        if (firstTool.function) {
+                            const fullFunctionCallDefinition = {
+                                name: firstTool.function.name,
+                                arguments: firstTool.function.arguments
+                            };
+                            functionsCaller(fullFunctionCallDefinition);
+                        }
+                    }
                 } else if (parsedChunk.completed || parsedChunk.type === 'complete') {
                     if (messageContent) {
                         updateMessagesWhenCompleted(messageContent);
@@ -99,9 +115,9 @@ const useChat = (conversationId: string | null, functionsCaller: (functionDefini
                         setAnimatedText("");
                     }
                     // After first response completes, push chatId to URL once to avoid remounts during streaming
-                    if (parsedChunk.conversation_id && searchParams.get('chatId') !== parsedChunk.conversation_id) {
+                    if (parsedChunk.conversation_id && searchParams.get('chatId') !== parsedChunk.conversation_id || parsedChunk.woo_request_id !== searchParams.get('wooRequestId')) {
                         console.log('Pushing chatId to URL', parsedChunk.conversation_id);
-                        setSearchParams({ chatId: parsedChunk.conversation_id }, { replace: true } as any);
+                        setSearchParams({ chatId: parsedChunk.conversation_id, wooRequestId: parsedChunk.woo_request_id }, { replace: true } as any);
                     }
                 }
             } catch (e) {
@@ -135,17 +151,32 @@ const useChat = (conversationId: string | null, functionsCaller: (functionDefini
             setCurrentMessageKey(generateSecureRandomKey());
             setMessages(prevMessages => [...prevMessages, {role: "user", content: message}]);
 
-            console.log('Sending message', message, wsRef.current, wsRef.current?.readyState);
-            if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-                const idToUse = conversationId;
-                wsRef.current.send(JSON.stringify({ conversation_id: idToUse, message }));
-            } else {
-                console.error('WebSocket is not open');
+            // Send message via HTTP POST instead of WebSocket
+            const response = await fetch(`${BACKEND_URL}/api/conversations/send-message/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    conversation_id: conversationId || null,
+                    message: message
+                })
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.error || 'Failed to send message');
+            }
+
+            const data = await response.json();
+            // Update conversationId if we got a new one
+            if ((data.conversation_id && data.conversation_id !== conversationId) && (data.woo_request_id && data.woo_request_id !== searchParams.get('wooRequestId'))) {
+                setSearchParams({ chatId: data.conversation_id, wooRequestId: data.woo_request_id }, { replace: true } as any);
             }
         } catch (error) {
             console.error("Failed to send message", error);
         }
-    }, [conversationId]);
+    }, [conversationId, setSearchParams]);
     
     function extractJsonObjects(chunkValue:string) {
         const jsonStrings = [];

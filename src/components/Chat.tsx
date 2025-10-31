@@ -5,6 +5,8 @@ import TypewriterStreaming from "./ui/typewriter-streaming.tsx";
 import { IconSend } from "@tabler/icons-react";
 import { RequestFormContext } from "../context/RequestFormContext.tsx";
 
+
+
 interface ChatProps {
     initialMessages?: { role: string; content: string }[] | null;
 }
@@ -15,15 +17,50 @@ const Chat = ({ initialMessages }: ChatProps) => {
     const [content, setContent] = useState<string>("");
     const bottomOfChatContainer = useRef<HTMLDivElement | null>(null);
     const requestForm = useContext(RequestFormContext);
-    const functionCaller = (_definition: { name: string; arguments: any }) => {
+    const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://127.0.0.1:8000";
 
-
+    const functionCaller = async (_definition: { name: string; arguments: any }) => {
         console.log("Function caller", _definition);
-        if (_definition.name === "set_name") {
-            // Parse the arguments
+        if (_definition.name === "woo_question_answered") {
+            console.log("Updating answer", _definition.arguments);
+            // Update the answer of the question in the request form
+            requestForm?.updateAnswer({ id: _definition.arguments.id, 
+                woo_question: _definition.arguments.woo_question, 
+                answer: _definition.arguments.answer, 
+                chunks: _definition.arguments.chunks });
+            return;
+        }
+        if (_definition.name === "add_questions_to_woo_request") {
             const args: any = JSON.parse(_definition.arguments);
-            console.log("Setting name", args.name);
-            requestForm?.setName(args.name);
+            if (!args.questions || !requestForm) return;
+
+            // Find new questions (by question text)
+            const existingTexts = new Set(requestForm.questions.map(q => q.question));
+            const newQuestions = args.questions.filter((q: string) => !existingTexts.has(q));
+
+            if (newQuestions.length === 0) return;
+
+            // Get woo_request_id from conversation
+            let wooRequestId: number | null = null;
+            if (chatId) {
+                try {
+                    const convRes = await fetch(`${BACKEND_URL}/api/conversations/${chatId}/`);
+                    const convData = await convRes.json();
+                    wooRequestId = convData.woo_request_id || null;
+                } catch (e) {
+                    console.error("Failed to get conversation", e);
+                }
+            }
+
+            // Add new questions to backend and update state
+            const questionPromises = newQuestions.map(async (questionText: string) => {
+                if (!wooRequestId) {
+                    return { id: 0, question: questionText, answer: { id: 0, answer: "", chunks: [] }, answer_loading: true, saved: false };
+                }
+            });
+
+            const newQuestionObjects = await Promise.all(questionPromises);
+            requestForm.setQuestions([...requestForm.questions, ...newQuestionObjects]);
         }
     };
     const { messages, animatedText, sendMessage, currentMessageKey } = useChat(chatId, functionCaller, "Hello, how can I help you?", initialMessages);
@@ -40,8 +77,6 @@ const Chat = ({ initialMessages }: ChatProps) => {
         setContent("");
     };
 
-    console.log("Animated text in chat component", animatedText);
-    console.log("Messages in chat component", messages);
     return (
         <div className="h-full flex flex-col bg-white">
             <div className="flex-1 overflow-y-auto p-4 md:p-8">

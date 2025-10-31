@@ -26,7 +26,6 @@ interface TypewriterProps {
     const [currentIndex, setCurrentIndex] = useState(0);
     const [isAnimating, setIsAnimating] = useState(false);
 
-    console.log("Animated text in typewriter component", animatedText);
 
     useEffect(() => {
       console.log("Reset for new message")
