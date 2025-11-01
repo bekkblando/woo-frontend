@@ -1,8 +1,37 @@
-import { useContext, useState, useEffect } from 'react';
+import { useContext, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { IconLoader2, IconChevronDown } from '@tabler/icons-react';
 import { RequestFormContext } from '../context/RequestFormContext';
+import type { Answer } from '../context/RequestFormContext';
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://127.0.0.1:8000";
+
+
+const AnswerViewer = ({ answer }: { answer: Answer }) => {
+    const [isOpen, setIsOpen] = useState(false);
+
+    return (
+        <div className="w-full">
+            <div className="flex items-center gap-2 w-full">
+                <div className="text-sm text-[#154273] truncate flex-1">{answer.answer}</div>
+                <button
+                    onClick={() => setIsOpen(!isOpen)}
+                    className="flex-shrink-0 w-6 h-6 rounded-full border border-[#F68153] flex items-center justify-center hover:bg-[#F68153]/10 transition-colors"
+                    aria-label="Toggle answer details"
+                >
+                    <IconChevronDown 
+                        className={`h-3 w-3 text-[#F68153] transition-transform ${isOpen ? 'rotate-180' : ''}`}
+                    />
+                </button>
+            </div>
+            {isOpen && (
+                <div className="mt-2 p-3 bg-white border border-[#F68153] rounded text-sm text-[#154273]">
+                    {answer.answer}
+                </div>
+            )}
+        </div>
+    );
+};
 
 const RequestForm = () => {
     const requestForm = useContext(RequestFormContext);
@@ -51,9 +80,19 @@ const RequestForm = () => {
                     {requestForm.questions.map((question) => (
                         <div key={question.question}>
                             <label className="block text-sm font-medium text-[#154273]">{question.question}</label>
-                            {question.answer_loading ? <div className="text-sm text-[#154273]">Loading...</div> : <div className="text-sm text-[#154273]">{question.answer.answer}</div>}
+                            {question.answer_loading ? (
+                                <div className="flex items-center gap-2 text-sm text-[#154273]">
+                                    <IconLoader2 className="animate-spin h-4 w-4" />
+                                </div>
+                            ) : (
+                                <AnswerViewer answer={question.answer} />
+                            )}
                         </div>
                     ))}
+                    <p className="text-sm py-2">
+                        <p>Met vriendelijke groet,</p>
+                        <p>Jan van Hamelen</p>
+                    </p>
                 </div>
             </div>
             <div className="text-sm w-full flex justify-between items-center">Ben je tevreden met deze informatie? Stuur jouw verzoek naar je mailadres. 
