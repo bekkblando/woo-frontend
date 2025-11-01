@@ -25,7 +25,7 @@ const AnswerViewer = ({ answer }: { answer: Answer }) => {
                 </button>
             </div>
             {isOpen && (
-                <div className="mt-2 p-3 bg-white border border-[#F68153] rounded text-sm text-[#154273]">
+                <div className="z-10 mt-2 p-3 bg-white border border-[#F68153] rounded text-sm text-[#154273]">
                     {answer.answer}
                 </div>
             )}
@@ -69,8 +69,9 @@ const RequestForm = ({ finalize = false }: { finalize?: boolean }) => {
 
     console.log("Request form questions", requestForm.questions);
     return (
-        <div>
-            <div className="h-[50vh] p-6 md:p-8 bg-[#F5F5F5] border-2 border-[#738DA7] mb-6">
+        <div className={`${finalize ? 'flex flex-row gap-6' : 'flex flex-col'}`}>
+            <div>
+            <div className={`${finalize ? 'w-1/2' : 'h-[50vh]'} p-6 md:p-8 bg-[#F5F5F5] border-2 border-[#738DA7] mb-6`}>
                     <div>
                    
                     <div className="text-sm py-2">
@@ -97,21 +98,37 @@ const RequestForm = ({ finalize = false }: { finalize?: boolean }) => {
                         <p>Jan van Hamelen</p>
                     </div>
                 </div>
+            </div>                   
+            
+            <div>
+                <p>
+                    Ben je tevreden met deze informatie? Stuur jouw verzoek naar je mailadres.        
+                    <button onClick={() => {}} disabled={submitting} className="text-sm display-inline-block bg-[#F68153] text-white px-2 py-1">
+                    Ontvang informatie
+                    </button> </p>
             </div>
+            </div>
+
             { finalize ? (
-               <>
-               <div className="text-sm w-full flex justify-between items-center">Ben je tevreden met deze informatie? Stuur jouw verzoek naar je mailadres. 
-                   <button onClick={handleSubmit} disabled={submitting} className="text-sm display-inline-block bg-[#F68153] text-white px-2 py-1">
-                     Ontvang informatie
-                   </button>
-               </div>
-   
-   
-               <div className="mt-6 w-full flex justify-between items-center">Wil je meer weten? Dan helpen we je graag verder.
-                   <button onClick={handleSubmit} disabled={submitting} className="text-sm display-inline-block bg-[#03689B] text-white px-2 py-1">
-                       Ga verder
-                   </button>
-               </div>
+                <>
+                <div className="w-1/2 flex flex-col gap-6 px-6">
+                <div className="text-sm w-full flex flex-col justify-between text-left items-center">
+                    <div className="text-2xl font-bold self-start">Informatie verzoek</div>
+                    <div>Kies deze optie als je aanvullende informatie zoekt omdat je vraag nog niet volledig beantwoord kon worden met de openbaar beschikbare gegevens. Deze route biedt ruimte om, wanneer dat passend is, extra of meer contextuele informatie te verstrekken.</div>
+                    <button onClick={() => {}} disabled={submitting} className="text-2xl display-inline-block bg-[#F68153] self-end text-white px-4 py-2">
+                    Stuur een informatieverzoek
+                    </button>
+                </div>
+    
+    
+                <div className="mt-6 w-full flex flex-col justify-between text-left items-center">
+                        <div className="text-2xl font-bold self-start">WOO verzoek</div>
+                        <div>Kies deze optie als je een formele informatieaanvraag wilt indienen waarop de overheid binnen vier tot zes weken moet reageren. Je verzoek wordt behandeld volgens de Wet open overheid (Woo), en waar mogelijk ontvang je relevante documenten en toelichtingen om je vraag volledig te beantwoorden.</div>
+                    <button onClick={handleSubmit} disabled={submitting} className="text-2xl display-inline-block bg-[#03689B] self-end text-white px-4 py-2">
+                    Stuur een informatieverzoek
+                    </button>
+                </div>
+                </div>
                </>
             ) : (
                 <>

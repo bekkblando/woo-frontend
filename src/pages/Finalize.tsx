@@ -3,6 +3,7 @@ import { RequestFormContext } from "../context/RequestFormContext";
 import { useSearchParams } from "react-router-dom";
 import { useContext, useState, useEffect } from "react";
 import { IconLoader2 } from "@tabler/icons-react";
+import Navbar from "../components/Navbar";
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://127.0.0.1:8000";
 
@@ -42,12 +43,13 @@ const Finalize = () => {
 
     return (
         <div className="w-full flex flex-col justify-center">
+            <Navbar />
             {loading ? (
                 <div className="flex justify-center items-center h-full">
                     <IconLoader2 className="animate-spin h-8 w-8" />
                 </div>
             ) : (
-            <div className="w-1/2">
+            <div>
                 <div className="text-2xl font-bold pb-4">MijnVerzoek</div>
                 <div className="text-sm pb-6">Hier maken we een verzoek voor je klaar. Je kunt dit versturen via dit platform of kopieëren en aanpassen. Dan kun je jouw verzoek versturen per mail.</div>
                     <RequestForm finalize={true} />
