@@ -30,7 +30,6 @@ const RequestMaker = () => {
     const chatId = searchParams.get("chatId");
     const [initialMessages, setInitialMessages] = useState<Message[] | null>(null);
     const [loading, setLoading] = useState(false);
-    const navigate = useNavigate();
 
   useEffect(() => {
     const fetchConversation = async () => {
@@ -81,7 +80,7 @@ const RequestMaker = () => {
             <Chat initialMessages={initialMessages} />
           )}
         </div>
-        <div className="px-6">
+        <div className="px-6 w-1/2">
           <div className="text-2xl font-bold pb-4">MijnVerzoek</div>
           <div className="text-sm pb-6">Hier maken we een verzoek voor je klaar. Je kunt dit versturen via dit platform of kopieëren en aanpassen. Dan kun je jouw verzoek versturen per mail.</div>
             <RequestForm />

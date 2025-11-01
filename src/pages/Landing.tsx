@@ -3,7 +3,7 @@ import { IconMicrophone, IconSend2 } from "@tabler/icons-react";
 import { IconUser } from "@tabler/icons-react";
 import { useNavigate } from "react-router-dom";
 
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://127.0.0.1:8000";
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://127.0.0.1:8003";
 const Landing = () => {
     const [content, setContent] = useState<string>("");
     const [loading, setLoading] = useState<boolean>(false);

@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import ReconnectingWebSocket from 'reconnecting-websocket';
 
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://127.0.0.1:8000";
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://127.0.0.1:8003";
 
 
 export interface FunctionDefinition {

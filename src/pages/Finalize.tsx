@@ -5,7 +5,7 @@ import { useContext, useState, useEffect } from "react";
 import { IconLoader2 } from "@tabler/icons-react";
 import Navbar from "../components/Navbar";
 
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://127.0.0.1:8000";
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://127.0.0.1:8003";
 
 const Finalize = () => {
     const requestForm  = useContext(RequestFormContext);
@@ -25,7 +25,7 @@ const Finalize = () => {
             console.log("Data", data);
             if (requestForm) {
                 requestForm.setQuestions(
-                    data.woo_request.questions.map(q => ({ ...q, answer: q.answer ? { id: q.answer.id, answer: q.answer.answer, chunks: [] } : null, answer_loading: q.answer ? false : true, saved: true })));
+                    data.woo_request.questions.map(q => ({ ...q, answer: q.answer ? q.answer : null, answer_loading: q.answer ? false : true, saved: true })));
             }
           } else {
             console.error('Failed to fetch conversation');
@@ -49,7 +49,7 @@ const Finalize = () => {
                     <IconLoader2 className="animate-spin h-8 w-8" />
                 </div>
             ) : (
-            <div>
+            <div className="px-12">
                 <div className="text-2xl font-bold pb-4">MijnVerzoek</div>
                 <div className="text-sm pb-6">Hier maken we een verzoek voor je klaar. Je kunt dit versturen via dit platform of kopieëren en aanpassen. Dan kun je jouw verzoek versturen per mail.</div>
                     <RequestForm finalize={true} />

@@ -5,8 +5,24 @@ export type Answer = {
   id: number;
   woo_question: number;
   answer: string;
-  chunks: string[];
-}
+  details?: {
+    blocks?: Array<{
+      quote: string;
+      url: string;
+      chunk_id: string;
+    }>;
+  };
+  chunks?: Array<{
+    id: string;
+    content: {
+      id?: string;
+      content?: {
+        url?: string;
+        chunk_text?: string;
+      };
+    };
+  }>;
+};
 export type Question = {
   id: number;
   question: string;
@@ -27,7 +43,7 @@ type Props = {
   children: React.ReactNode;
 };
 
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://127.0.0.1:8000";
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://127.0.0.1:8003";
 
 export function RequestFormProvider({ children }: Props) {
   const [questions, setQuestions] = useState<Question[]>([]);

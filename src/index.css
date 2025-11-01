@@ -1,5 +1,17 @@
 @import "tailwindcss";
 
+/* Reset button styles to ensure Tailwind classes work properly */
+@layer base {
+  button {
+    margin: 0;
+    padding: 0;
+    border: none;
+    background: transparent;
+    font: inherit;
+    cursor: pointer;
+  }
+}
+
 /* Custom scrollbar utilities */
 @layer utilities {
   .scrollbar-hide {

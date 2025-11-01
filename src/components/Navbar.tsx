@@ -16,6 +16,9 @@ const Navbar = () => {
       </div>
       </div>
       <div className="bg-[#EFF7FC] w-full h-4"></div>
+      <div className="w-full">
+        <img src="/lees-voor.png" alt="Lees voor" className="h-[30px] my-6 mx-2" />
+      </div>
       </div>
 
     );
