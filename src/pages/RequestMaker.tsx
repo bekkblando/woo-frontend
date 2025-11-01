@@ -4,8 +4,9 @@ import { useSearchParams } from 'react-router-dom'
 import { useContext, useEffect, useState } from 'react'
 import { RequestFormContext } from '../context/RequestFormContext';
 import { IconUser } from '@tabler/icons-react';
+import { useNavigate } from 'react-router-dom';
 
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://127.0.0.1:8000";
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://127.0.0.1:8003";
 
 interface Message {
   role: string;
@@ -30,7 +31,7 @@ const RequestMaker = () => {
     const chatId = searchParams.get("chatId");
     const [initialMessages, setInitialMessages] = useState<Message[] | null>(null);
     const [loading, setLoading] = useState(false);
-    
+    const navigate = useNavigate();
 
   useEffect(() => {
     const fetchConversation = async () => {
@@ -68,7 +69,7 @@ const RequestMaker = () => {
 
     return (
       <div className="w-full flex flex-col justify-center">
-        <div className="w-full flex justify-between items-center px-2">
+        <div className="w-full flex justify-between items-center px-2 cursor-pointer" onClick={() => navigate('/')} >
       <div className="text-[15px] font-bold">
           VraagMijnOverheid
       </div>
