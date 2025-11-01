@@ -5,6 +5,7 @@ export type Answer = {
   id: number;
   woo_question: number;
   answer: string;
+  answered?: "yes" | "no" | "partial";
   details?: {
     blocks?: Array<{
       quote: string;
@@ -22,7 +23,7 @@ export type Answer = {
       };
     };
   }>;
-};
+}
 export type Question = {
   id: number;
   question: string;

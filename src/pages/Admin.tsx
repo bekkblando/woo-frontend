@@ -1,15 +1,38 @@
 import Navbar from "../components/Navbar";
 import { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
-import { IconLoader2 } from "@tabler/icons-react";
+import StatusBar from "../components/ui/status-bar";
 import type { Question, Answer } from "../context/RequestFormContext";
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://127.0.0.1:8003";
+
+interface SearchResult {
+    chunks: Array<{
+        id: string;
+        content: {
+            id?: string;
+            content?: {
+                chunk_text?: string;
+                url?: string;
+            };
+            document?: {
+                title?: string;
+                url?: string;
+            };
+        };
+    }>;
+    query: string;
+    count: number;
+}
 
 const Admin = () => {
     const [searchParams] = useSearchParams();
     const [questions, setQuestions] = useState<Question[]>([]);
     const [loading, setLoading] = useState(true);
+    const [searchQuery, setSearchQuery] = useState("");
+    const [searchResults, setSearchResults] = useState<SearchResult | null>(null);
+    const [searchLoading, setSearchLoading] = useState(false);
+    const [includePrivate, setIncludePrivate] = useState(false);
     const chatId = searchParams.get("chatId");
     
     useEffect(() => {
@@ -65,9 +88,61 @@ const Admin = () => {
         return answer.answer;
     };
 
+    const performSearch = async (query: string) => {
+        if (!query.trim()) {
+            setSearchResults(null);
+            return;
+        }
+
+        setSearchLoading(true);
+        try {
+            const response = await fetch(`${BACKEND_URL}/api/search/`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    query: query,
+                    include_private: includePrivate,
+                }),
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                setSearchResults(data);
+            } else {
+                console.error("Search failed:", await response.text());
+                setSearchResults(null);
+            }
+        } catch (error) {
+            console.error("Error performing search:", error);
+            setSearchResults(null);
+        } finally {
+            setSearchLoading(false);
+        }
+    };
+
+    const handleSearchInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        setSearchQuery(e.target.value);
+    };
+
+    const handleSearchInputKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (e.key === "Enter") {
+            performSearch(searchQuery);
+        }
+    };
+
     const handleAction = (action: string, questionId: number) => {
-        console.log(`${action} clicked for question ${questionId}`);
-        // Functionality will be implemented later
+        if (action === "Zoeken") {
+            const question = questions.find((q) => q.id === questionId);
+            if (question) {
+                setSearchQuery(question.question);
+                performSearch(question.question);
+            }
+        } else {
+            console.log(`${action} clicked for question ${questionId}`);
+            // Functionality will be implemented later
+        }
     };
 
     const handleGeneralAction = (action: string) => {
@@ -80,10 +155,7 @@ const Admin = () => {
             <div className="min-h-screen bg-white">
                 <Navbar />
                 <div className="max-w-6xl mx-auto px-6 py-8 flex items-center justify-center">
-                    <div className="flex items-center gap-2 text-[#154273]">
-                        <IconLoader2 className="animate-spin h-6 w-6" />
-                        <span>Laden...</span>
-                    </div>
+                    <StatusBar size="md" />
                 </div>
             </div>
         );
@@ -130,9 +202,8 @@ const Admin = () => {
                                             Vraag {index + 1}: {question.question}
                                         </h3>
                                         {question.answer_loading ? (
-                                            <div className="flex items-center gap-2 text-sm text-gray-800">
-                                                <IconLoader2 className="animate-spin h-4 w-4" />
-                                                <span>Antwoord wordt geladen...</span>
+                                            <div className="py-2">
+                                                <StatusBar size="sm" />
                                             </div>
                                         ) : question.answer ? (
                                             <div className="text-sm text-gray-800">
@@ -230,15 +301,92 @@ const Admin = () => {
                         </div>
                     </div>
 
-                    {/* Right Column - Empty space for future content */}
+                    {/* Right Column - Search Results */}
                     <div className="w-full">
-                        <div className="rounded-lg flex flex-col bg-[#EFF7FC] border-2 border-[#03689B]">
-                            <div className="flex-1 overflow-y-auto p-2">
-                                <input
-                                    className="flex-1 bg-transparent text-[#154273] text-lg outline-none placeholder:text-[#154273]/60 border-0 py-4"
-                                    type="text"
-                                    placeholder="Document Zoeken..."
-                                />
+                        <div className="rounded-lg flex flex-col bg-[#EFF7FC] border-2 border-[#03689B] min-h-[400px]">
+                            <div className="p-4 border-b border-[#03689B]">
+                                <div className="flex items-center gap-2 mb-2">
+                                    <input
+                                        className="flex-1 bg-transparent text-[#154273] text-lg outline-none placeholder:text-[#154273]/60 border border-[#03689B] rounded px-3 py-2"
+                                        type="text"
+                                        placeholder="Document Zoeken..."
+                                        value={searchQuery}
+                                        onChange={handleSearchInputChange}
+                                        onKeyPress={handleSearchInputKeyPress}
+                                    />
+                                    <button
+                                        onClick={() => performSearch(searchQuery)}
+                                        className="bg-[#03689B] text-white px-4 py-2 rounded text-sm font-medium hover:bg-[#025a87] transition-colors"
+                                        disabled={searchLoading}
+                                    >
+                                        {searchLoading ? (
+                                            <StatusBar size="sm" />
+                                        ) : (
+                                            "Zoek"
+                                        )}
+                                    </button>
+                                </div>
+                                <label className="flex items-center gap-2 text-sm text-[#154273]">
+                                    <input
+                                        type="checkbox"
+                                        checked={includePrivate}
+                                        onChange={(e) => setIncludePrivate(e.target.checked)}
+                                        className="rounded"
+                                    />
+                                    <span>Inclusief private databases</span>
+                                </label>
+                            </div>
+                            <div className="flex-1 overflow-y-auto p-4">
+                                {searchLoading ? (
+                                    <div className="flex items-center justify-center py-8">
+                                        <StatusBar size="md" />
+                                    </div>
+                                ) : searchResults ? (
+                                    <div className="space-y-4">
+                                        <div className="text-sm text-[#154273] font-semibold mb-2">
+                                            {searchResults.count} resultaten gevonden voor "{searchResults.query}"
+                                        </div>
+                                        {searchResults.chunks.length === 0 ? (
+                                            <div className="text-sm text-gray-600 italic text-center py-8">
+                                                Geen resultaten gevonden.
+                                            </div>
+                                        ) : (
+                                            searchResults.chunks.map((chunk) => {
+                                                const chunkText = chunk.content?.content?.chunk_text || "";
+                                                const chunkUrl = chunk.content?.content?.url || chunk.content?.document?.url;
+                                                const documentTitle = chunk.content?.document?.title || "Document";
+                                                
+                                                return (
+                                                    <div
+                                                        key={chunk.id}
+                                                        className="bg-white border border-[#03689B] rounded-lg p-4 hover:shadow-md transition-shadow"
+                                                    >
+                                                        <div className="text-xs text-[#154273] font-semibold mb-2">
+                                                            {documentTitle}
+                                                        </div>
+                                                        <div className="text-sm text-gray-700 mb-2 line-clamp-3">
+                                                            {chunkText || "Geen tekst beschikbaar"}
+                                                        </div>
+                                                        {chunkUrl && (
+                                                            <a
+                                                                href={chunkUrl}
+                                                                target="_blank"
+                                                                rel="noopener noreferrer"
+                                                                className="text-xs text-[#03689B] hover:underline"
+                                                            >
+                                                                Bron bekijken →
+                                                            </a>
+                                                        )}
+                                                    </div>
+                                                );
+                                            })
+                                        )}
+                                    </div>
+                                ) : (
+                                    <div className="text-sm text-[#154273]/60 text-center py-8">
+                                        Voer een zoekopdracht in om documenten te vinden.
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </div>

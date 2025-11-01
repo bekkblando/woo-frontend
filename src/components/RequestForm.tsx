@@ -1,8 +1,9 @@
 import { useContext, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { IconLoader2, IconChevronDown } from '@tabler/icons-react';
+import { IconChevronDown } from '@tabler/icons-react';
 import { RequestFormContext } from '../context/RequestFormContext';
 import type { Answer } from '../context/RequestFormContext';
+import StatusBar from './ui/status-bar';
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://127.0.0.1:8003";
 
@@ -16,10 +17,30 @@ const AnswerViewer = ({ answer }: { answer: Answer }) => {
         return chunk?.content?.content?.url;
     };
 
+    // Get dot color based on answered status
+    const getDotColor = () => {
+        switch (answer.answered) {
+            case "yes":
+                return "bg-green-500";
+            case "partial":
+                return "bg-yellow-500";
+            case "no":
+                return "bg-red-500";
+            default:
+                return "bg-gray-400";
+        }
+    };
+
+    // Show Dutch text if not answered
+    const displayText = answer.answered === "no" 
+        ? "Niet beantwoord" 
+        : answer.answer;
+
     return (
         <div className="w-full relative">
             <div className="flex items-center gap-2 w-full">
-                <div className="text-sm text-[#154273] truncate flex-1">{answer.answer}</div>
+                <div className={`flex-shrink-0 w-3 h-3 rounded-full ${getDotColor()}`}></div>
+                <div className="text-sm text-[#154273] truncate flex-1">{displayText}</div>
                 <button
                     onClick={() => setIsOpen(!isOpen)}
                     className="flex-shrink-0 w-6 h-6 rounded-full border border-[#F68153] flex items-center justify-center hover:bg-[#F68153]/10 transition-colors"
@@ -32,7 +53,7 @@ const AnswerViewer = ({ answer }: { answer: Answer }) => {
             </div>
             {isOpen && (
                 <div className="relative z-[9999] mt-2 p-3 bg-white border border-[#F68153] rounded text-sm text-[#154273] shadow-lg">
-                    <div className="mb-3">{answer.answer}</div>
+                    <div className="mb-3">{answer.answered === "no" ? "Niet beantwoord" : answer.answer}</div>
                     {answer.details?.blocks && answer.details.blocks.length > 0 && (
                         <div className="mt-4 space-y-3">
                             {answer.details.blocks.map((block, index) => {
@@ -118,8 +139,8 @@ const RequestForm = ({ finalize = false }: { finalize?: boolean }) => {
                         <div key={question.question}>
                             <label className="block text-sm font-medium text-[#154273]">{question.question}</label>
                             {question.answer_loading ? (
-                                <div className="flex items-center gap-2 text-sm text-[#154273]">
-                                    <IconLoader2 className="animate-spin h-4 w-4" />
+                                <div className="py-2">
+                                    <StatusBar size="sm" />
                                 </div>
                             ) : question.answer ? (
                                 <AnswerViewer answer={question.answer} />
@@ -142,13 +163,13 @@ const RequestForm = ({ finalize = false }: { finalize?: boolean }) => {
             </div>
             { finalize ? (
                 <>
-                {!emailSubmitted ? <div>
+                {/* {!emailSubmitted ? <div>
                     <p>Voer je mailadres in</p>
                     <input type="email" value={userEmail} onChange={(e) => setUserEmail(e.target.value)} className="text-sm display-inline-block rounded-sm bg-[#EFF7FC] border-2 border-[#03689B] h-8 px-2" />
                     <button onClick={() => setEmailSubmitted(true)} className="text-sm ml-2 display-inline-block bg-[#F68153] text-white px-2 py-1">
                         Submit
                     </button>
-                </div> : (
+                </div> : ( */}
                 <div className="w-1/2 flex flex-col gap-6 px-6">
                 <div className="text-sm w-full flex flex-col gap-2 justify-between text-left items-center">
                     <div className="text-2xl font-bold self-start">Informatie verzoek</div>
@@ -167,7 +188,7 @@ const RequestForm = ({ finalize = false }: { finalize?: boolean }) => {
                     </button>
                 </div>
                 </div>
-                )}
+                {/* )} */}
                </>
             ) : (
                 <>
