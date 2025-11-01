@@ -1,8 +1,10 @@
 import { IconUser } from "@tabler/icons-react";
+import { useNavigate } from 'react-router-dom';
 
 const Navbar = () => {
+    const navigate = useNavigate();
     return (
-        <div className="w-full flex flex-col justify-center">
+        <div className="w-full flex flex-col justify-center cursor-pointer" onClick={() => navigate('/')} >
         <div className="w-full flex justify-between items-center px-2">
       <div className="text-[15px] font-bold">
           VraagMijnOverheid
