@@ -1,7 +1,7 @@
 import Navbar from "../components/Navbar";
 import { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
-import StatusBar from "../components/ui/status-bar";
+import { IconLoader2 } from "@tabler/icons-react";
 import type { Question, Answer } from "../context/RequestFormContext";
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://127.0.0.1:8003";
@@ -155,7 +155,10 @@ const Admin = () => {
             <div className="min-h-screen bg-white">
                 <Navbar />
                 <div className="max-w-6xl mx-auto px-6 py-8 flex items-center justify-center">
-                    <StatusBar size="md" />
+                    <div className="flex items-center gap-2 text-[#154273]">
+                        <IconLoader2 className="animate-spin h-6 w-6" />
+                        <span>Laden...</span>
+                    </div>
                 </div>
             </div>
         );
@@ -202,8 +205,9 @@ const Admin = () => {
                                             Vraag {index + 1}: {question.question}
                                         </h3>
                                         {question.answer_loading ? (
-                                            <div className="py-2">
-                                                <StatusBar size="sm" />
+                                            <div className="flex items-center gap-2 text-sm text-gray-800">
+                                                <IconLoader2 className="animate-spin h-4 w-4" />
+                                                <span>Antwoord wordt geladen...</span>
                                             </div>
                                         ) : question.answer ? (
                                             <div className="text-sm text-gray-800">
@@ -320,7 +324,7 @@ const Admin = () => {
                                         disabled={searchLoading}
                                     >
                                         {searchLoading ? (
-                                            <StatusBar size="sm" />
+                                            <IconLoader2 className="animate-spin h-4 w-4" />
                                         ) : (
                                             "Zoek"
                                         )}
@@ -338,8 +342,9 @@ const Admin = () => {
                             </div>
                             <div className="flex-1 overflow-y-auto p-4">
                                 {searchLoading ? (
-                                    <div className="flex items-center justify-center py-8">
-                                        <StatusBar size="md" />
+                                    <div className="flex items-center justify-center gap-2 text-[#154273] py-8">
+                                        <IconLoader2 className="animate-spin h-6 w-6" />
+                                        <span>Zoeken...</span>
                                     </div>
                                 ) : searchResults ? (
                                     <div className="space-y-4">
