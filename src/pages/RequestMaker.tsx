@@ -35,12 +35,31 @@ const RequestMaker = () => {
     const [loading, setLoading] = useState(false);
     const hasQuestions = Boolean(requestForm?.questions && requestForm.questions.length > 0);
     const [isSheetOpen, setIsSheetOpen] = useState(hasQuestions);
+    const [isMobile, setIsMobile] = useState(false);
     
     // Track previous state for detecting changes
     const prevQuestionsRef = useRef<Array<{ id: number; question: string; answer?: any; answer_loading?: boolean; saved?: boolean }>>([]);
     const lastQuestionAddedNotificationRef = useRef<number>(0);
     const lastQuestionAnsweredNotificationRef = useRef<number>(0);
     const DEBOUNCE_TIME = 30000; // 30 seconds
+
+  // Check if we're on mobile/tablet (below lg breakpoint which is 1024px)
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 1024);
+    };
+    
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
+  // Close sheet when switching from mobile to desktop
+  useEffect(() => {
+    if (!isMobile && isSheetOpen) {
+      setIsSheetOpen(false);
+    }
+  }, [isMobile, isSheetOpen]);
 
   useEffect(() => {
     const fetchConversation = async () => {
@@ -192,8 +211,8 @@ const RequestMaker = () => {
           </div>
         )}
       </div>
-      {/* Bottom Sheet for Mobile/Tablet - only show if questions exist */}
-      {hasQuestions && (
+      {/* Bottom Sheet for Mobile/Tablet - only show if questions exist and on mobile */}
+      {hasQuestions && isMobile && (
         <Sheet isOpen={isSheetOpen} onClose={() => setIsSheetOpen(false)} snapPoints={[600, 120]} initialSnap={1} disableDrag={false}>
         <Sheet.Container data-sheet-container>
           <Sheet.Header />
