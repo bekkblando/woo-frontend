@@ -64,7 +64,7 @@ const Landing = () => {
             <div className="w-full md:w-1/3 self-center px-4 md:px-0">
             <div className="text-2xl font-bold pt-22 pb-4">VraagMijnOverheid</div>
             <div className="pb-6">
-                <p>Wil je iets weten van de overheid? Dan kan je die vraag hier stellen. Je kunt ons alles vragen. We gaan je vervolgens zo goed mogelijk helpen om die informatie 
+                <p>Wil u iets weten van de overheid? Dan kan u die vraag hier stellen. U kunt ons alles vragen. We gaan u vervolgens zo goed mogelijk helpen om die informatie 
                 Zo houden we de Overheid transparent en betrouwbaar. </p>
             </div>
             <div className="px-0 md:px-2">
@@ -104,7 +104,7 @@ const Landing = () => {
                 Log in om te bekijken hoe het ervoor staat.</p>
             </div>
             <div className="text-sm font-bold text-[#154475] pt-6">
-                {'>'} Worstel je met het stellen van je vraag? 
+                {'>'} Worstelt u met het stellen van uw vraag? 
                 Kijk deze video die je op weg helpt. 
             </div>
             </div>
