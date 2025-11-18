@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { IconMicrophone, IconSend2 } from "@tabler/icons-react";
+import { IconMicrophone, IconSend2, IconLoader2 } from "@tabler/icons-react";
 import { IconUser } from "@tabler/icons-react";
 import { useNavigate } from "react-router-dom";
 
@@ -12,27 +12,33 @@ const Landing = () => {
     const submitContent = async () => {
         setLoading(true);
         console.log(content);
-        // Send message via HTTP POST instead of WebSocket
-        const response = await fetch(`${BACKEND_URL}/api/conversations/send-message/`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                conversation_id: null,
-                message: content
-            })
-        });
+        try {
+            // Send message via HTTP POST instead of WebSocket
+            const response = await fetch(`${BACKEND_URL}/api/conversations/send-message/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    conversation_id: null,
+                    message: content
+                })
+            });
 
-        if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}));
-            throw new Error(errorData.error || 'Failed to send message');
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.error || 'Failed to send message');
+            }
+
+            const data = await response.json();
+            // Update conversationId if we got a new one
+            navigate(`/request?chatId=${data.conversation_id}&wooRequestId=${data.woo_request_id}`);
+        } catch (error) {
+            console.error('Error submitting content:', error);
+            // Optionally show error message to user
+        } finally {
+            setLoading(false);
         }
-
-        const data = await response.json();
-        // Update conversationId if we got a new one
-        navigate(`/request?chatId=${data.conversation_id}&wooRequestId=${data.woo_request_id}`);
-        setLoading(false);
     }
 
     return (
@@ -67,18 +73,28 @@ const Landing = () => {
             </div>
             <div className="px-2 md:px-2 flex items-center gap-1 md:gap-2">
                 <input
-                    className="flex-1 bg-transparent text-[#154273] text-base md:text-lg outline-none placeholder:text-[#154273]/60 border-0 py-4 min-w-0"
+                    className="flex-1 bg-transparent text-[#154273] text-base md:text-lg outline-none placeholder:text-[#154273]/60 border-0 py-4 min-w-0 disabled:opacity-50 disabled:cursor-not-allowed"
                     type="text"
                     value={content}
                     onChange={(e) => setContent(e.target.value)}
                     placeholder="Hoe kunnen we je helpen? Stel hier je vraag."
+                    disabled={loading}
                     onKeyDown={(e) => {
-                        if (e.key === "Enter") submitContent();
+                        if (e.key === "Enter" && !loading) submitContent();
                     }}
                 />
-                <IconMicrophone className="inline-block w-5 h-5 md:w-6 md:h-6 flex-shrink-0"/>
-                <button className="px-2 md:px-3 py-1 flex-shrink-0" onClick={submitContent} aria-label="Send">
-                    <IconSend2 className="w-5 h-5 md:w-6 md:h-6" />
+                <IconMicrophone className={`inline-block w-5 h-5 md:w-6 md:h-6 flex-shrink-0 ${loading ? 'opacity-50' : ''}`}/>
+                <button 
+                    className="px-2 md:px-3 py-1 flex-shrink-0 disabled:opacity-50 disabled:cursor-not-allowed" 
+                    onClick={submitContent} 
+                    disabled={loading}
+                    aria-label="Send"
+                >
+                    {loading ? (
+                        <IconLoader2 className="w-5 h-5 md:w-6 md:h-6 animate-spin" />
+                    ) : (
+                        <IconSend2 className="w-5 h-5 md:w-6 md:h-6" />
+                    )}
                 </button>
             </div>
         </div>
