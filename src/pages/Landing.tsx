@@ -55,19 +55,19 @@ const Landing = () => {
             </div>
             </div>
 
-            <div className="w-1/3 self-center">
+            <div className="w-full md:w-1/3 self-center px-4 md:px-0">
             <div className="text-2xl font-bold pt-22 pb-4">VraagMijnOverheid</div>
             <div className="pb-6">
                 <p>Wil je iets weten van de overheid? Dan kan je die vraag hier stellen. Je kunt ons alles vragen. We gaan je vervolgens zo goed mogelijk helpen om die informatie 
                 Zo houden we de Overheid transparent en betrouwbaar. </p>
             </div>
-            <div className="px-2">
+            <div className="px-0 md:px-2">
             <div className="rounded-lg h-1/3 flex flex-col bg-[#EFF7FC] border-2 border-[#03689B]">
             <div className="flex-1 overflow-y-auto p-2 md:p-8">
             </div>
-            <div className="px-2 flex items-center gap-2">
+            <div className="px-2 md:px-2 flex items-center gap-1 md:gap-2">
                 <input
-                    className="flex-1 bg-transparent text-[#154273] text-lg outline-none placeholder:text-[#154273]/60 border-0 py-4"
+                    className="flex-1 bg-transparent text-[#154273] text-base md:text-lg outline-none placeholder:text-[#154273]/60 border-0 py-4 min-w-0"
                     type="text"
                     value={content}
                     onChange={(e) => setContent(e.target.value)}
@@ -76,9 +76,9 @@ const Landing = () => {
                         if (e.key === "Enter") submitContent();
                     }}
                 />
-                <IconMicrophone className="inline-block"/>
-                <button className="px-3 py-1" onClick={submitContent} aria-label="Send">
-                    <IconSend2 />
+                <IconMicrophone className="inline-block w-5 h-5 md:w-6 md:h-6 flex-shrink-0"/>
+                <button className="px-2 md:px-3 py-1 flex-shrink-0" onClick={submitContent} aria-label="Send">
+                    <IconSend2 className="w-5 h-5 md:w-6 md:h-6" />
                 </button>
             </div>
         </div>
