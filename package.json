@@ -15,10 +15,13 @@
     "clsx": "^2.1.1",
     "framer-motion": "^12.23.24",
     "lodash": "^4.17.21",
+    "motion": "^12.23.24",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
     "react-markdown": "^10.1.0",
+    "react-modal-sheet": "^5.2.1",
     "react-router-dom": "^7.9.5",
+    "react-toastify": "^11.0.5",
     "reconnecting-websocket": "^4.4.0",
     "reconnectingwebsocket": "^1.0.0",
     "tailwind-merge": "^3.3.1"

@@ -123,21 +123,19 @@ const RequestForm = ({ finalize = false }: { finalize?: boolean }) => {
 
     console.log("Request form questions", requestForm.questions);
     return (
-        <div className={`${finalize ? 'flex flex-row gap-6' : 'flex flex-col'}`}>
-            <div className={`${finalize ? 'w-1/2' : 'h-[50vh]'}`}>
-            <div className={`p-6 md:p-8 bg-[#F5F5F5] border-2 border-[#738DA7] mb-6`}>
-                    <div>
-                   
+        <div className={`${finalize ? 'flex flex-col md:flex-row gap-6' : 'flex flex-col'}`}>
+            <div className={`${finalize ? 'w-full md:w-1/2' : 'max-h-[70vh]'} flex flex-col`}>
+                <div className={`p-6 md:p-8 flex-1 overflow-y-auto bg-[#F5F5F5] border-2 border-[#738DA7] mb-6`}>
                     <div className="text-sm py-2">
-                    <p className="text-sm py-2">Onderwerp: Informatie verzoek </p>
+                        <p className="text-sm py-2">Onderwerp: Informatie verzoek </p>
 
-                    <p className="text-sm py-2">Geachte Heer/Mevrouw, </p>
+                        <p className="text-sm py-2">Geachte Heer/Mevrouw, </p>
 
-                    <p className="text-sm py-2">Via deze mail doe ik het verzoek op grond van de Wet Open Overheid. Ik verzoek openbaring van de volgende informatie:</p>
+                        <p className="text-sm py-2">Via deze mail doe ik het verzoek op grond van de Wet Open Overheid. Ik verzoek openbaring van de volgende informatie:</p>
                     </div>
                     {requestForm.questions.map((question) => (
-                        <div key={question.question}>
-                            <label className="block text-sm font-medium text-[#154273]">{question.question}</label>
+                        <div key={question.question} className="mb-4">
+                            <label className="block text-sm font-medium text-[#154273] mb-2">{question.question}</label>
                             {question.answer_loading ? (
                                 <div className="py-2">
                                     <StatusBar size="sm" />
@@ -152,14 +150,6 @@ const RequestForm = ({ finalize = false }: { finalize?: boolean }) => {
                         <p>Jan van Hamelen</p>
                     </div>
                 </div>
-                </div>
-                {finalize && <div>
-                        <p>
-                            Ben je tevreden met deze informatie? Stuur jouw verzoek naar je mailadres.        
-                            <button onClick={() => {}} disabled={submitting} className="text-sm display-inline-block bg-[#F68153] text-white px-2 py-1">
-                            Ontvang informatie
-                            </button> </p>
-                    </div>}
             </div>
             { finalize ? (
                 <>
@@ -170,7 +160,7 @@ const RequestForm = ({ finalize = false }: { finalize?: boolean }) => {
                         Submit
                     </button>
                 </div> : ( */}
-                <div className="w-1/2 flex flex-col gap-6 px-6">
+                <div className="w-full md:w-1/2 flex flex-col gap-6 px-6">
                 <div className="text-sm w-full flex flex-col gap-2 justify-between text-left items-center">
                     <div className="text-2xl font-bold self-start">Informatie verzoek</div>
                     <div>Kies deze optie als je aanvullende informatie zoekt omdat je vraag nog niet volledig beantwoord kon worden met de openbaar beschikbare gegevens. Deze route biedt ruimte om, wanneer dat passend is, extra of meer contextuele informatie te verstrekken.</div>
@@ -192,14 +182,14 @@ const RequestForm = ({ finalize = false }: { finalize?: boolean }) => {
                </>
             ) : (
                 <>
-            <div className="text-sm w-full flex justify-between items-center mt-6">Ben je tevreden met deze informatie? Stuur jouw verzoek naar je mailadres. 
+            <div className="text-sm w-full flex justify-between items-center pt-6">Ben je tevreden met deze informatie? Stuur jouw verzoek naar je mailadres. 
                 <button onClick={handleSubmit} disabled={submitting} className="text-sm display-inline-block bg-[#F68153] text-white px-2 py-1">
                   Ontvang informatie
                 </button>
             </div>
 
 
-            <div className="mt-6 w-full flex justify-between items-center">Wil je meer weten? Dan helpen we je graag verder.
+            <div className="pt-6 w-full flex justify-between items-center">Wil je meer weten? Dan helpen we je graag verder.
                 <button onClick={handleSubmit} disabled={submitting} className="text-sm display-inline-block bg-[#03689B] text-white px-2 py-1">
                     Ga verder
                 </button>
