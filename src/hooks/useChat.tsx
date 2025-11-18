@@ -89,6 +89,12 @@ const useChat = (conversationId: string | null, functionsCaller: (functionDefini
                         name: "woo_question_answered",
                         arguments: parsedChunk.data
                     });
+                } else if (parsedChunk.type === "questions_added") {
+                    console.log('Received questions_added', parsedChunk.data);
+                    functionsCaller({
+                        name: "questions_added",
+                        arguments: parsedChunk.data
+                    });
                 } else if (parsedChunk.message) {
                     console.log('Received message', parsedChunk.message);
                     messageContent += parsedChunk.message;
@@ -125,9 +131,8 @@ const useChat = (conversationId: string | null, functionsCaller: (functionDefini
             }
         };
 
-        ws.onerror = (event: Event) => {
+        ws.onerror = (event) => {
             console.error('WebSocket error', event);
-            console.error('WebSocket error');
         };
 
         ws.onclose = () => {
@@ -178,47 +183,6 @@ const useChat = (conversationId: string | null, functionsCaller: (functionDefini
         }
     }, [conversationId, setSearchParams]);
     
-    function extractJsonObjects(chunkValue:string) {
-        const jsonStrings = [];
-        let bracketCount = 0;
-        let currentJson = "";
-    
-        for (let i = 0; i < chunkValue.length; i++) {
-            const char = chunkValue[i];
-    
-            if (char === '{') {
-                if (bracketCount === 0) {
-                    currentJson = char;
-                } else {
-                    currentJson += char;
-                }
-                bracketCount++;
-            } else if (char === '}') {
-                bracketCount--;
-                currentJson += char;
-    
-                if (bracketCount === 0) {
-                    jsonStrings.push(currentJson);
-                    currentJson = "";
-                }
-            } else if (bracketCount > 0) {
-                currentJson += char;
-            }
-        }
-    
-        const jsonObjects:any = [];
-    
-        jsonStrings.forEach(jsonString => {
-            try {
-                const parsedChunk = JSON.parse(jsonString);
-                jsonObjects.push(parsedChunk);
-            } catch (error) {
-                console.error('Failed to parse JSON:', error);
-            }
-        });
-    
-        return jsonObjects;
-    }
     return { messages, animatedText, isComplete, sendMessage, loading, currentMessageKey };
 };
 

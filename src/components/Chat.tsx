@@ -30,37 +30,33 @@ const Chat = ({ initialMessages }: ChatProps) => {
                 chunks: _definition.arguments.chunks });
             return;
         }
-        if (_definition.name === "add_questions_to_woo_request") {
-            const args: any = JSON.parse(_definition.arguments);
-            if (!args.questions || !requestForm) return;
+        if (_definition.name === "questions_added") {
+            // Handle questions added by backend
+            const data = _definition.arguments;
+            if (!data.questions || !Array.isArray(data.questions) || !requestForm) return;
 
-            // Find new questions (by question text)
+            // Transform backend question format to frontend format
+            const newQuestionObjects = data.questions.map((q: any) => ({
+                id: q.id || 0,
+                question: q.question || "",
+                answer: q.answer ? {
+                    id: q.answer.id || 0,
+                    answer: q.answer.answer || "",
+                    chunks: q.answer.chunks || []
+                } : { id: 0, answer: "", chunks: [] },
+                answer_loading: !q.answer, // Loading if no answer yet
+                saved: true // Questions from backend are already saved
+            }));
+
+            // Find new questions (by question text) to avoid duplicates
             const existingTexts = new Set(requestForm.questions.map(q => q.question));
-            const newQuestions = args.questions.filter((q: string) => !existingTexts.has(q));
+            const uniqueNewQuestions = newQuestionObjects.filter(
+                (q: any) => !existingTexts.has(q.question)
+            );
 
-            if (newQuestions.length === 0) return;
-
-            // Get woo_request_id from conversation
-            let wooRequestId: number | null = null;
-            if (chatId) {
-                try {
-                    const convRes = await fetch(`${BACKEND_URL}/api/conversations/${chatId}/`);
-                    const convData = await convRes.json();
-                    wooRequestId = convData.woo_request_id || null;
-                } catch (e) {
-                    console.error("Failed to get conversation", e);
-                }
+            if (uniqueNewQuestions.length > 0) {
+                requestForm.setQuestions([...requestForm.questions, ...uniqueNewQuestions]);
             }
-
-            // Add new questions to backend and update state
-            const questionPromises = newQuestions.map(async (questionText: string) => {
-                if (!wooRequestId) {
-                    return { id: 0, question: questionText, answer: { id: 0, answer: "", chunks: [] }, answer_loading: true, saved: false };
-                }
-            });
-
-            const newQuestionObjects = await Promise.all(questionPromises);
-            requestForm.setQuestions([...requestForm.questions, ...newQuestionObjects]);
         }
     };
     const { messages, animatedText, sendMessage, currentMessageKey } = useChat(chatId, functionCaller, "Hello, how can I help you?", initialMessages);
