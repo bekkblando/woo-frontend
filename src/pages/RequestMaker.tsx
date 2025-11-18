@@ -2,7 +2,7 @@ import Chat from '../components/Chat'
 import RequestForm from '../components/RequestForm'
 import { useSearchParams } from 'react-router-dom'
 import { useContext, useEffect, useState, useRef } from 'react'
-import { RequestFormContext } from '../context/RequestFormContext';
+import { RequestFormContext, type Answer } from '../context/RequestFormContext';
 import Navbar from '../components/Navbar';
 import { Sheet } from 'react-modal-sheet';
 import { toast, ToastContainer } from 'react-toastify';
@@ -18,7 +18,7 @@ interface Message {
 
 interface WooRequestData {
   id: number;
-  questions: { id: number; question: string; answer: { id: number; answer: string; chunks: string[] }; answer_loading: boolean }[];
+  questions: { id: number; question: string; answer: Answer | null }[];
 }
 interface ConversationData {
   id: number;
@@ -80,7 +80,20 @@ const RequestMaker = () => {
             setInitialMessages(data.messages);
             if (requestForm) {
                 requestForm.setQuestions(
-                    data.woo_request.questions.map(q => ({ ...q, answer: q.answer ? { id: q.answer.id, woo_question: q.id, answer: q.answer.answer, chunks: [] } : undefined, answer_loading: q.answer ? false : true, saved: true })));
+                    data.woo_request.questions.map(q => ({ 
+                        id: q.id,
+                        question: q.question,
+                        answer: q.answer ? { 
+                            id: q.answer.id, 
+                            woo_question: q.id, 
+                            answer: q.answer.answer, 
+                            chunks: q.answer.chunks || [],
+                            details: q.answer.details || {},
+                            answered: q.answer.answered
+                        } : undefined, 
+                        answer_loading: q.answer ? false : true, 
+                        saved: true 
+                    })));
             }
           } else {
             console.error('Failed to fetch conversation');

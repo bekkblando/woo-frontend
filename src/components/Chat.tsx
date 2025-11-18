@@ -17,17 +17,21 @@ const Chat = ({ initialMessages }: ChatProps) => {
     const [content, setContent] = useState<string>("");
     const bottomOfChatContainer = useRef<HTMLDivElement | null>(null);
     const requestForm = useContext(RequestFormContext);
-    const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://127.0.0.1:8000";
 
     const functionCaller = async (_definition: { name: string; arguments: any }) => {
         console.log("Function caller", _definition);
         if (_definition.name === "woo_question_answered") {
             console.log("Updating answer", _definition.arguments);
             // Update the answer of the question in the request form
-            requestForm?.updateAnswer({ id: _definition.arguments.id, 
+            // Pass all fields including details (with blocks) and answered status
+            requestForm?.updateAnswer({ 
+                id: _definition.arguments.id, 
                 woo_question: _definition.arguments.woo_question, 
                 answer: _definition.arguments.answer, 
-                chunks: _definition.arguments.chunks });
+                chunks: _definition.arguments.chunks || [],
+                details: _definition.arguments.details || {},
+                answered: _definition.arguments.answered
+            });
             return;
         }
         if (_definition.name === "questions_added") {
