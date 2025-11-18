@@ -7,6 +7,7 @@ import Navbar from '../components/Navbar';
 import { Sheet } from 'react-modal-sheet';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import SEO from '../components/SEO';
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://127.0.0.1:8003";
 
@@ -171,6 +172,15 @@ const RequestMaker = () => {
 
     return (
       <div className="w-full flex flex-col h-full justify-center">
+      <SEO
+        title="MijnVraag - Stel uw vraag en maak uw WOO verzoek"
+        description="Bespreek hier uw vraag met ons systeem. Wij helpen u met het ontleden van uw vraag in subvragen, tonen al publieke documenten, en helpen u bij het maken van een WOO-verzoek op een respectvolle manier."
+        keywords="WOO verzoek maken, informatieverzoek, vraag stellen overheid, subvragen, publieke documenten, MijnVraag"
+        ogTitle="MijnVraag - Stel uw vraag en maak uw WOO verzoek"
+        ogDescription="Bespreek hier uw vraag met ons systeem. Wij helpen u met het ontleden van uw vraag en het maken van een WOO-verzoek."
+        ogUrl="/request"
+        canonicalUrl="/request"
+      />
       <Navbar />
       <div 
         className="bg-[#f7f7f7] h-full flex flex-col min-h-screen lg:flex-row gap-6 lg:gap-12 p-4 md:p-6"

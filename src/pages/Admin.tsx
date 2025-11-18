@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import { IconLoader2 } from "@tabler/icons-react";
 import type { Question, Answer } from "../context/RequestFormContext";
+import SEO from "../components/SEO";
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://127.0.0.1:8003";
 
@@ -166,6 +167,15 @@ const Admin = () => {
 
     return (
         <div className="min-h-screen bg-white">
+            <SEO
+                title="BurgerVerzoek - Admin Portaal"
+                description="Admin portaal voor het beheren van burgerverzoeken. Goedgekeurde vragen en antwoorden, zoeken in niet-publieke informatie, en verzoeken versturen naar burgers of doorzetten naar andere overheidsorganen."
+                keywords="admin portaal, burgerverzoek beheren, WOO verzoek beheren, ambtenaar, overheidsorgaan"
+                ogTitle="BurgerVerzoek - Admin Portaal"
+                ogDescription="Admin portaal voor het beheren van burgerverzoeken met praktische takenlijst."
+                ogUrl="/admin"
+                canonicalUrl="/admin"
+            />
             <Navbar />
             <div className="max-w-7xl mx-auto px-6 py-8">
                 {/* Two-column layout */}

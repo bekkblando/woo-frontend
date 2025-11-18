@@ -4,6 +4,7 @@ import { useSearchParams } from "react-router-dom";
 import { useContext, useState, useEffect } from "react";
 import { IconLoader2 } from "@tabler/icons-react";
 import Navbar from "../components/Navbar";
+import SEO from "../components/SEO";
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://127.0.0.1:8003";
 
@@ -43,6 +44,15 @@ const Finalize = () => {
 
     return (
         <div className="w-full flex flex-col justify-center">
+            <SEO
+                title="MijnVerzoek - Finaliseer uw WOO verzoek"
+                description="Hier maken we een verzoek voor u klaar. U kunt dit versturen via dit platform of kopiëren en aanpassen. Dan kunt u uw verzoek versturen per mail. Een informatieverzoek of juridisch bindend WOO-verzoek."
+                keywords="WOO verzoek finaliseren, informatieverzoek versturen, WOO verzoek afronden, MijnVerzoek"
+                ogTitle="MijnVerzoek - Finaliseer uw WOO verzoek"
+                ogDescription="Hier maken we een verzoek voor u klaar. U kunt dit versturen via dit platform of kopiëren en aanpassen."
+                ogUrl="/finalize"
+                canonicalUrl="/finalize"
+            />
             <Navbar />
             {loading ? (
                 <div className="flex justify-center items-center h-full">

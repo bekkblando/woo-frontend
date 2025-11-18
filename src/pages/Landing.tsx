@@ -2,6 +2,7 @@ import { useState } from "react";
 import { IconMicrophone, IconSend2, IconLoader2 } from "@tabler/icons-react";
 import { IconUser } from "@tabler/icons-react";
 import { useNavigate } from "react-router-dom";
+import SEO from "../components/SEO";
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://127.0.0.1:8003";
 const Landing = () => {
@@ -43,6 +44,15 @@ const Landing = () => {
 
     return (
         <div>
+            <SEO
+                title="VraagMijnOverheid - Stel uw vraag aan de overheid"
+                description="Wil u iets weten van de overheid? Stel uw vraag hier op een eenvoudige en respectvolle manier. Wij helpen u vanaf de eerste vraag met het vinden van informatie en het indienen van WOO-verzoeken. Transparantie en vertrouwen tussen burger en overheid."
+                keywords="WOO verzoek, Wet Open Overheid, informatieverzoek, overheid, transparantie, burger, overheidsinformatie, open overheid, VraagMijnOverheid, burger en overheid"
+                ogTitle="VraagMijnOverheid - Transparantie en vertrouwen tussen burger en overheid"
+                ogDescription="Stel uw vraag aan de overheid op een eenvoudige en respectvolle manier. Wij helpen u vanaf de eerste vraag met het vinden van informatie."
+                ogUrl="/"
+                canonicalUrl="/"
+            />
             <div className="w-full flex flex-col justify-center">
             <div className="w-full flex justify-between items-center px-2">
             <div className="text-[15px] font-bold">
