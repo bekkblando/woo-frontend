@@ -34,8 +34,14 @@ const RequestMaker = () => {
     const [initialMessages, setInitialMessages] = useState<Message[] | null>(null);
     const [loading, setLoading] = useState(false);
     const hasQuestions = Boolean(requestForm?.questions && requestForm.questions.length > 0);
-    const [isSheetOpen, setIsSheetOpen] = useState(hasQuestions);
     const [isMobile, setIsMobile] = useState(false);
+    // Initialize sheet open on mobile if questions exist
+    const [isSheetOpen, setIsSheetOpen] = useState(() => {
+      if (typeof window !== 'undefined') {
+        return hasQuestions && window.innerWidth < 1024;
+      }
+      return false;
+    });
     
     // Track previous state for detecting changes
     const prevQuestionsRef = useRef<Array<{ id: number; question: string; answer?: any; answer_loading?: boolean; saved?: boolean }>>([]);
@@ -93,14 +99,16 @@ const RequestMaker = () => {
     fetchConversation();
   }, []);
 
-  // Update sheet state when questions are removed (close if no questions)
+  // Update sheet state when questions change
   useEffect(() => {
     const questionsExist = Boolean(requestForm?.questions && requestForm.questions.length > 0);
     if (!questionsExist) {
       setIsSheetOpen(false);
+    } else if (isMobile) {
+      // Open sheet on mobile when questions exist
+      setIsSheetOpen(true);
     }
-    // Don't automatically open when new questions are added
-  }, [requestForm?.questions]);
+  }, [requestForm?.questions, isMobile]);
 
   // Initialize prevQuestionsRef on first load
   useEffect(() => {
