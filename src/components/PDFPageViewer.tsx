@@ -1,9 +1,9 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import * as pdfjs from 'pdfjs-dist';
-import pdfjsWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 
-// Vite emits the worker as a hashed static asset with correct MIME type
-pdfjs.GlobalWorkerOptions.workerSrc = pdfjsWorkerUrl;
+// Use .js extension so servers serve it with correct MIME type (application/javascript)
+// .mjs files get served as application/octet-stream on Heroku which browsers reject
+pdfjs.GlobalWorkerOptions.workerSrc = '/pdf.worker.js';
 
 interface PDFPageViewerProps {
   pdfUrl: string;
