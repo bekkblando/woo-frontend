@@ -1,9 +1,11 @@
 import Navbar from "../components/Navbar";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
 import { IconLoader2 } from "@tabler/icons-react";
 import type { Question, Answer } from "../context/RequestFormContext";
 import SEO from "../components/SEO";
+import PDFModal from "../components/PDFModal";
+import ReactMarkdown from "react-markdown";
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://127.0.0.1:8003";
 
@@ -26,6 +28,13 @@ interface SearchResult {
     count: number;
 }
 
+interface PDFModalState {
+    isOpen: boolean;
+    pdfUrl: string;
+    pageNumber: number;
+    documentName: string;
+}
+
 const Admin = () => {
     const [searchParams] = useSearchParams();
     const [questions, setQuestions] = useState<Question[]>([]);
@@ -34,7 +43,33 @@ const Admin = () => {
     const [searchResults, setSearchResults] = useState<SearchResult | null>(null);
     const [searchLoading, setSearchLoading] = useState(false);
     const [includePrivate, setIncludePrivate] = useState(false);
+    const [pdfModal, setPdfModal] = useState<PDFModalState>({
+        isOpen: false,
+        pdfUrl: '',
+        pageNumber: 0,
+        documentName: '',
+    });
     const chatId = searchParams.get("chatId");
+
+    const openPdfModal = useCallback(async (documentId: string, pageNumber: number) => {
+        try {
+            const res = await fetch(`${BACKEND_URL}/api/documents/${documentId}/presigned-url/`);
+            if (!res.ok) throw new Error('Failed to fetch presigned URL');
+            const data = await res.json();
+            setPdfModal({
+                isOpen: true,
+                pdfUrl: data.url,
+                pageNumber: pageNumber,
+                documentName: data.name || 'Document',
+            });
+        } catch (err) {
+            console.error('Failed to open PDF:', err);
+        }
+    }, []);
+
+    const closePdfModal = useCallback(() => {
+        setPdfModal(prev => ({ ...prev, isOpen: false }));
+    }, []);
     
     useEffect(() => {
         const fetchConversation = async () => {
@@ -224,26 +259,51 @@ const Admin = () => {
                                                 <p>
                                                     Informatie {index + 1}: {renderInformationText(question.answer)}
                                                 </p>
-                                                {/* Show source links if available (inspired by AnswerViewer) */}
+                                                {/* Show blocks: text + evidence with PDF links */}
                                                 {question.answer.details?.blocks && question.answer.details.blocks.length > 0 && (
                                                     <div className="mt-3 space-y-2">
                                                         {question.answer.details.blocks.map((block, blockIndex) => {
-                                                            const url = getChunkUrl(block.chunk_id, question.answer!);
-                                                            return (
-                                                                <div key={blockIndex} className="text-xs text-gray-600 border-l-2 border-[#03689B] pl-2">
-                                                                    <div className="italic mb-1">"{block.quote}"</div>
-                                                                    {url && (
-                                                                        <a 
-                                                                            href={url} 
-                                                                            target="_blank" 
-                                                                            rel="noopener noreferrer"
-                                                                            className="text-[#03689B] hover:underline"
-                                                                        >
-                                                                            Bron →
-                                                                        </a>
-                                                                    )}
-                                                                </div>
-                                                            );
+                                                            if (block.type === 'text' && block.content) {
+                                                                return (
+                                                                    <div key={blockIndex} className="text-xs text-gray-700">
+                                                                        {block.content}
+                                                                    </div>
+                                                                );
+                                                            }
+
+                                                            if (block.type === 'evidence' && block.quote) {
+                                                                const hasDocument = block.document_id && block.page_number !== undefined;
+                                                                return (
+                                                                    <div key={blockIndex} className="text-xs text-gray-600 border-l-2 border-[#03689B] pl-2">
+                                                                        <div className="italic mb-1 prose prose-xs max-w-none"><ReactMarkdown>{`"${block.quote}"`}</ReactMarkdown></div>
+                                                                        {hasDocument ? (
+                                                                            <button
+                                                                                onClick={() => openPdfModal(block.document_id!, block.page_number!)}
+                                                                                className="text-[#03689B] hover:underline cursor-pointer bg-transparent border-none p-0 text-xs"
+                                                                            >
+                                                                                Bekijk bron (PDF) →
+                                                                            </button>
+                                                                        ) : (
+                                                                            // Fallback: try legacy chunk URL
+                                                                            (() => {
+                                                                                const url = block.chunk_id ? getChunkUrl(block.chunk_id, question.answer!) : undefined;
+                                                                                return url ? (
+                                                                                    <a
+                                                                                        href={url}
+                                                                                        target="_blank"
+                                                                                        rel="noopener noreferrer"
+                                                                                        className="text-[#03689B] hover:underline"
+                                                                                    >
+                                                                                        Bron →
+                                                                                    </a>
+                                                                                ) : null;
+                                                                            })()
+                                                                        )}
+                                                                    </div>
+                                                                );
+                                                            }
+
+                                                            return null;
                                                         })}
                                                     </div>
                                                 )}
@@ -407,6 +467,15 @@ const Admin = () => {
                     </div>
                 </div>
             </div>
+
+            {/* PDF Viewer Modal */}
+            <PDFModal
+                isOpen={pdfModal.isOpen}
+                onClose={closePdfModal}
+                pdfUrl={pdfModal.pdfUrl}
+                pageNumber={pdfModal.pageNumber}
+                documentName={pdfModal.documentName}
+            />
         </div>
     );
 };

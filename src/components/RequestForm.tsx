@@ -1,21 +1,49 @@
-import { useContext, useState } from 'react';
+import { useContext, useState, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { IconChevronDown } from '@tabler/icons-react';
 import { RequestFormContext } from '../context/RequestFormContext';
 import type { Answer } from '../context/RequestFormContext';
 import StatusBar from './ui/status-bar';
+import PDFModal from './PDFModal';
+import ReactMarkdown from 'react-markdown';
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://127.0.0.1:8003";
 
 
 const AnswerViewer = ({ answer }: { answer: Answer }) => {
     const [isOpen, setIsOpen] = useState(false);
+    const [pdfModal, setPdfModal] = useState<{
+        isOpen: boolean;
+        pdfUrl: string;
+        pageNumber: number;
+        documentName: string;
+    }>({ isOpen: false, pdfUrl: '', pageNumber: 0, documentName: '' });
 
-    // Find chunk URL by chunk_id
+    // Find chunk URL by chunk_id (legacy fallback)
     const getChunkUrl = (chunkId: string): string | undefined => {
         const chunk = answer.chunks?.find(chunk => chunk.id === chunkId);
         return chunk?.content?.content?.url;
     };
+
+    const openPdfModal = useCallback(async (documentId: string, pageNumber: number) => {
+        try {
+            const res = await fetch(`${BACKEND_URL}/api/documents/${documentId}/presigned-url/`);
+            if (!res.ok) throw new Error('Failed to fetch presigned URL');
+            const data = await res.json();
+            setPdfModal({
+                isOpen: true,
+                pdfUrl: data.url,
+                pageNumber,
+                documentName: data.name || 'Document',
+            });
+        } catch (err) {
+            console.error('Failed to open PDF:', err);
+        }
+    }, []);
+
+    const closePdfModal = useCallback(() => {
+        setPdfModal(prev => ({ ...prev, isOpen: false }));
+    }, []);
 
     // Get dot color based on answered status
     const getDotColor = () => {
@@ -57,29 +85,62 @@ const AnswerViewer = ({ answer }: { answer: Answer }) => {
                     {answer.details?.blocks && answer.details.blocks.length > 0 && (
                         <div className="mt-4 space-y-3">
                             {answer.details.blocks.map((block, index) => {
-                                const url = getChunkUrl(block.chunk_id);
-                                return (
-                                    <div key={index} className="border-l-2 border-[#F68153] pl-3 py-2">
-                                        <div className="italic text-gray-700 mb-2">
-                                            "{block.quote}"
+                                if (block.type === 'text' && block.content) {
+                                    return (
+                                        <div key={index} className="text-xs text-gray-700">
+                                            {block.content}
                                         </div>
-                                        {url && (
-                                            <a 
-                                                href={url} 
-                                                target="_blank" 
-                                                rel="noopener noreferrer"
-                                                className="text-[#03689B] hover:underline text-xs"
-                                            >
-                                                Bekijk bron →
-                                            </a>
-                                        )}
-                                    </div>
-                                );
+                                    );
+                                }
+
+                                if (block.type === 'evidence' && block.quote) {
+                                    const hasDocument = block.document_id && block.page_number !== undefined;
+                                    return (
+                                        <div key={index} className="border-l-2 border-[#F68153] pl-3 py-2">
+                                            <div className="italic text-gray-700 mb-2 prose prose-sm max-w-none">
+                                                <ReactMarkdown>{`"${block.quote}"`}</ReactMarkdown>
+                                            </div>
+                                            {hasDocument ? (
+                                                <button
+                                                    onClick={() => openPdfModal(block.document_id!, block.page_number!)}
+                                                    className="text-[#03689B] hover:underline text-xs cursor-pointer bg-transparent border-none p-0"
+                                                >
+                                                    Bekijk bron (PDF) →
+                                                </button>
+                                            ) : (
+                                                (() => {
+                                                    const url = block.chunk_id ? getChunkUrl(block.chunk_id) : undefined;
+                                                    return url ? (
+                                                        <a 
+                                                            href={url} 
+                                                            target="_blank" 
+                                                            rel="noopener noreferrer"
+                                                            className="text-[#03689B] hover:underline text-xs"
+                                                        >
+                                                            Bekijk bron →
+                                                        </a>
+                                                    ) : null;
+                                                })()
+                                            )}
+                                        </div>
+                                    );
+                                }
+
+                                return null;
                             })}
                         </div>
                     )}
                 </div>
             )}
+
+            {/* PDF Viewer Modal */}
+            <PDFModal
+                isOpen={pdfModal.isOpen}
+                onClose={closePdfModal}
+                pdfUrl={pdfModal.pdfUrl}
+                pageNumber={pdfModal.pageNumber}
+                documentName={pdfModal.documentName}
+            />
         </div>
     );
 };

@@ -8,9 +8,12 @@ export type Answer = {
   answered?: "yes" | "no" | "partial";
   details?: {
     blocks?: Array<{
-      quote: string;
-      url: string;
-      chunk_id: string;
+      type?: string;
+      content?: string;
+      quote?: string;
+      chunk_id?: string;
+      document_id?: string;
+      page_number?: number;
     }>;
   };
   chunks?: Array<{
@@ -20,7 +23,9 @@ export type Answer = {
       content?: {
         url?: string;
         chunk_text?: string;
+        chunk_index?: number;
       };
+      document?: string;
     };
   }>;
 }
