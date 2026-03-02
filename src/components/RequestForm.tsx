@@ -1,4 +1,4 @@
-import { useContext, useState, useCallback } from 'react';
+import { useContext, useState, useCallback, useMemo, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { IconChevronDown } from '@tabler/icons-react';
 import { RequestFormContext } from '../context/RequestFormContext';
@@ -13,7 +13,7 @@ import { toast } from 'react-toastify';
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://127.0.0.1:8003";
 
 
-const AnswerViewer = ({ answer }: { answer: Answer }) => {
+const AnswerViewer = ({ answer, documentNames }: { answer: Answer; documentNames: Record<string, string> }) => {
     const [isOpen, setIsOpen] = useState(false);
     const [pdfModal, setPdfModal] = useState<{
         isOpen: boolean;
@@ -98,6 +98,7 @@ const AnswerViewer = ({ answer }: { answer: Answer }) => {
 
                                 if (block.type === 'evidence' && block.quote) {
                                     const hasDocument = block.document_id && block.page_number !== undefined;
+                                    const docName = block.document_id ? documentNames[block.document_id] : undefined;
                                     return (
                                         <div key={index} className="border-l-2 border-[#F68153] pl-3 py-2">
                                             <div className="italic text-gray-700 mb-2 prose prose-sm max-w-none">
@@ -106,9 +107,14 @@ const AnswerViewer = ({ answer }: { answer: Answer }) => {
                                             {hasDocument ? (
                                                 <button
                                                     onClick={() => openPdfModal(block.document_id!, block.page_number!)}
-                                                    className="text-[#03689B] hover:underline text-xs cursor-pointer bg-transparent border-none p-0"
+                                                    className="text-[#03689B] hover:underline text-xs cursor-pointer bg-transparent border-none p-0 max-w-full text-left"
+                                                    title={docName || 'Bekijk bron (PDF)'}
                                                 >
-                                                    Bekijk bron (PDF) →
+                                                    <span className="inline-block max-w-[250px] truncate align-bottom">
+                                                        {docName || 'Bekijk bron (PDF)'}
+                                                    </span>
+                                                    {docName && <span className="whitespace-nowrap"> (p. {block.page_number! + 1})</span>}
+                                                    <span> →</span>
                                                 </button>
                                             ) : (
                                                 (() => {
@@ -158,6 +164,80 @@ const RequestForm = ({ finalize = false }: { finalize?: boolean }) => {
         isOpen: boolean;
         type: 'informatieverzoek' | 'woo_verzoek';
     }>({ isOpen: false, type: 'informatieverzoek' });
+
+    // Map of document_id -> document name, fetched from the backend
+    const [documentNames, setDocumentNames] = useState<Record<string, string>>({});
+
+    // Collect all unique document IDs referenced in evidence blocks
+    const uniqueDocumentIds = useMemo(() => {
+        if (!requestForm) return [];
+        const ids = new Set<string>();
+        requestForm.questions.forEach((question) => {
+            if (question.answer?.details?.blocks) {
+                question.answer.details.blocks.forEach((block) => {
+                    if (block.type === 'evidence' && block.document_id) {
+                        ids.add(block.document_id);
+                    }
+                });
+            }
+        });
+        return Array.from(ids);
+    }, [requestForm?.questions]);
+
+    // Fetch document names for all unique document IDs
+    useEffect(() => {
+        if (uniqueDocumentIds.length === 0) return;
+
+        // Only fetch names we don't already have
+        const missing = uniqueDocumentIds.filter((id) => !documentNames[id]);
+        if (missing.length === 0) return;
+
+        const fetchNames = async () => {
+            const newNames: Record<string, string> = {};
+            await Promise.all(
+                missing.map(async (docId) => {
+                    try {
+                        const res = await fetch(`${BACKEND_URL}/api/documents/${docId}/presigned-url/`);
+                        if (res.ok) {
+                            const data = await res.json();
+                            if (data.name) newNames[docId] = data.name;
+                        }
+                    } catch {
+                        // ignore – we'll just show a fallback name
+                    }
+                })
+            );
+            if (Object.keys(newNames).length > 0) {
+                setDocumentNames((prev) => ({ ...prev, ...newNames }));
+            }
+        };
+
+        fetchNames();
+    }, [uniqueDocumentIds]);
+
+    // Build appendix data grouped by document, with page references underneath
+    const appendixByDocument = useMemo(() => {
+        if (!requestForm) return [];
+        const docMap = new Map<string, Set<number>>();
+
+        requestForm.questions.forEach((question) => {
+            if (question.answer?.details?.blocks) {
+                question.answer.details.blocks.forEach((block) => {
+                    if (block.type === 'evidence' && block.document_id && block.page_number !== undefined) {
+                        if (!docMap.has(block.document_id)) {
+                            docMap.set(block.document_id, new Set());
+                        }
+                        docMap.get(block.document_id)!.add(block.page_number);
+                    }
+                });
+            }
+        });
+
+        return Array.from(docMap.entries()).map(([docId, pages]) => ({
+            document_id: docId,
+            pages: Array.from(pages).sort((a, b) => a - b),
+        }));
+    }, [requestForm?.questions]);
 
     if (!requestForm) return null;
     
@@ -213,8 +293,6 @@ const RequestForm = ({ finalize = false }: { finalize?: boolean }) => {
         });
     };
 
-  
-
     console.log("Request form questions", requestForm.questions);
     return (
         <div className={`${finalize ? 'flex flex-col md:flex-row gap-6' : 'flex flex-col'}`}>
@@ -235,7 +313,7 @@ const RequestForm = ({ finalize = false }: { finalize?: boolean }) => {
                                     <StatusBar size="sm" />
                                 </div>
                             ) : question.answer ? (
-                                <AnswerViewer answer={question.answer} />
+                                <AnswerViewer answer={question.answer} documentNames={documentNames} />
                             ) : null}
                         </div>
                     ))}
@@ -243,6 +321,55 @@ const RequestForm = ({ finalize = false }: { finalize?: boolean }) => {
                         <p>Met vriendelijke groet,</p>
                         <p>Jan van Hamelen</p>
                     </div>
+                    
+                    {/* Appendix section */}
+                    {appendixByDocument.length > 0 && (
+                        <div className="mt-8 pt-6 border-t border-[#738DA7]">
+                            <h3 className="text-sm font-semibold text-[#154273] mb-4">Bijlagen - Referentiedocumenten</h3>
+                            <p className="text-xs text-gray-600 mb-3">
+                                De volgende documenten worden in de antwoorden genoemd. Klik op een pagina om het te bekijken.
+                            </p>
+                            <table className="w-full text-sm border-collapse">
+                                <thead>
+                                    <tr className="border-b border-[#738DA7]">
+                                        <th className="text-left py-2 pr-3 text-[#154273] font-semibold w-[24px]">#</th>
+                                        <th className="text-left py-2 pr-3 text-[#154273] font-semibold">Document</th>
+                                        <th className="text-left py-2 text-[#154273] font-semibold">Pagina's</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {appendixByDocument.map((doc, idx) => {
+                                        const displayName = documentNames[doc.document_id] || `Document ${doc.document_id.slice(0, 8)}…`;
+                                        return (
+                                            <tr key={doc.document_id} className="border-b border-gray-200">
+                                                <td className="py-2 pr-3 text-[#154273] font-medium align-top">{idx + 1}.</td>
+                                                <td className="py-2 pr-3 align-top max-w-[200px]">
+                                                    <span className="text-[#154273] block truncate" title={displayName}>
+                                                        {displayName}
+                                                    </span>
+                                                </td>
+                                                <td className="py-2 align-top">
+                                                    <div className="flex flex-wrap gap-1">
+                                                        {doc.pages.map((page) => (
+                                                            <a
+                                                                key={page}
+                                                                href={`/document?documentId=${doc.document_id}&page=${page}`}
+                                                                target="_blank"
+                                                                rel="noopener noreferrer"
+                                                                className="text-[#03689B] hover:underline text-xs px-1.5 py-0.5 bg-[#EFF7FC] rounded"
+                                                            >
+                                                                p. {page + 1}
+                                                            </a>
+                                                        ))}
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
                 </div>
             </div>
             { finalize ? (

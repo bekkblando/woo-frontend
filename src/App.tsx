@@ -8,6 +8,8 @@ import CompletedRequest from './pages/CompletedRequest'
 import Status from './pages/Status'
 import Admin from './pages/Admin'
 import Privacy from './pages/Privacy'
+import DocumentViewer from './pages/DocumentViewer'
+import DocumentDownload from './pages/DocumentDownload'
 
 function App() {
   return (
@@ -20,6 +22,8 @@ function App() {
         <Route path="/status" element={<Status />} />
         <Route path="/admin" element={<Admin />} />
         <Route path="/privacy" element={<Privacy />} />
+        <Route path="/document" element={<DocumentViewer />} />
+        <Route path="/download" element={<DocumentDownload />} />
       </Routes>
     </RequestFormProvider>
   )
