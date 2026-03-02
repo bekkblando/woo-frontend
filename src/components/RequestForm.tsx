@@ -8,9 +8,77 @@ import PDFModal from './PDFModal';
 import EmailModal from './EmailModal';
 import WooSubmitModal from './WooSubmitModal';
 import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { toast } from 'react-toastify';
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://127.0.0.1:8003";
+
+const markdownComponents = {
+    table: (props: React.HTMLAttributes<HTMLTableElement>) => (
+        <div className="overflow-x-auto my-2">
+            <table className="w-full border-collapse text-xs" {...props} />
+        </div>
+    ),
+    thead: (props: React.HTMLAttributes<HTMLTableSectionElement>) => (
+        <thead className="bg-gray-100" {...props} />
+    ),
+    th: (props: React.ThHTMLAttributes<HTMLTableCellElement>) => (
+        <th className="border border-gray-300 px-2 py-1 text-left font-semibold text-[#154273]" {...props} />
+    ),
+    td: (props: React.TdHTMLAttributes<HTMLTableCellElement>) => (
+        <td className="border border-gray-300 px-2 py-1" {...props} />
+    ),
+    tr: (props: React.HTMLAttributes<HTMLTableRowElement>) => (
+        <tr className="even:bg-gray-50" {...props} />
+    ),
+};
+
+
+const EvidenceQuote = ({ quote, formattedQuote }: { quote: string; formattedQuote?: string }) => {
+    const [activeTab, setActiveTab] = useState<'formatted' | 'direct'>(formattedQuote ? 'formatted' : 'direct');
+
+    if (!formattedQuote) {
+        return (
+            <div className="italic text-gray-700 mb-2 prose prose-sm max-w-none">
+                <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>{`"${quote}"`}</ReactMarkdown>
+            </div>
+        );
+    }
+
+    return (
+        <div className="mb-2">
+            <div className="flex gap-1 mb-2">
+                <button
+                    onClick={() => setActiveTab('formatted')}
+                    className={`text-[10px] px-2 py-0.5 rounded-t border border-b-0 transition-colors ${
+                        activeTab === 'formatted'
+                            ? 'bg-white text-[#154273] border-[#F68153] font-medium'
+                            : 'bg-gray-100 text-gray-500 border-gray-300 hover:bg-gray-200'
+                    }`}
+                >
+                    Opgemaakt citaat
+                </button>
+                <button
+                    onClick={() => setActiveTab('direct')}
+                    className={`text-[10px] px-2 py-0.5 rounded-t border border-b-0 transition-colors ${
+                        activeTab === 'direct'
+                            ? 'bg-white text-[#154273] border-[#F68153] font-medium'
+                            : 'bg-gray-100 text-gray-500 border-gray-300 hover:bg-gray-200'
+                    }`}
+                >
+                    Direct citaat
+                </button>
+            </div>
+            <div className="italic text-gray-700 prose prose-sm max-w-none">
+                {activeTab === 'formatted' ? (
+                    <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>{formattedQuote}</ReactMarkdown>
+                ) : (
+                    <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>{`"${quote}"`}</ReactMarkdown>
+                )}
+            </div>
+        </div>
+    );
+};
 
 
 const AnswerViewer = ({ answer, documentNames }: { answer: Answer; documentNames: Record<string, string> }) => {
@@ -84,7 +152,9 @@ const AnswerViewer = ({ answer, documentNames }: { answer: Answer; documentNames
             </div>
             {isOpen && (
                 <div className="relative z-[9999] mt-2 p-3 bg-white border border-[#F68153] rounded text-sm text-[#154273] shadow-lg">
-                    <div className="mb-3">{answer.answered === "no" ? "Niet beantwoord" : answer.answer}</div>
+                    <div className="mb-3 prose prose-sm max-w-none">
+                        <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>{answer.answered === "no" ? "Niet beantwoord" : answer.answer}</ReactMarkdown>
+                    </div>
                     {answer.details?.blocks && answer.details.blocks.length > 0 && (
                         <div className="mt-4 space-y-3">
                             {answer.details.blocks.map((block, index) => {
@@ -101,9 +171,7 @@ const AnswerViewer = ({ answer, documentNames }: { answer: Answer; documentNames
                                     const docName = block.document_id ? documentNames[block.document_id] : undefined;
                                     return (
                                         <div key={index} className="border-l-2 border-[#F68153] pl-3 py-2">
-                                            <div className="italic text-gray-700 mb-2 prose prose-sm max-w-none">
-                                                <ReactMarkdown>{`"${block.quote}"`}</ReactMarkdown>
-                                            </div>
+                                            <EvidenceQuote quote={block.quote} formattedQuote={block.formatted_quote} />
                                             {hasDocument ? (
                                                 <button
                                                     onClick={() => openPdfModal(block.document_id!, block.page_number!)}
@@ -293,6 +361,32 @@ const RequestForm = ({ finalize = false }: { finalize?: boolean }) => {
         });
     };
 
+    const handleDownloadPdf = async () => {
+        const wooRequestId = searchParams.get("wooRequestId");
+        if (!wooRequestId) {
+            toast.error('WOO verzoek ID niet gevonden');
+            return;
+        }
+        try {
+            const response = await fetch(`${BACKEND_URL}/api/woo-requests/${wooRequestId}/download-pdf/`);
+            if (!response.ok) {
+                throw new Error('Fout bij downloaden van PDF');
+            }
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `WOO_rapport_${wooRequestId}.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            window.URL.revokeObjectURL(url);
+        } catch (error) {
+            console.error('Error downloading PDF:', error);
+            toast.error('Fout bij downloaden van PDF');
+        }
+    };
+
     console.log("Request form questions", requestForm.questions);
     return (
         <div className={`${finalize ? 'flex flex-col md:flex-row gap-6' : 'flex flex-col'}`}>
@@ -343,8 +437,8 @@ const RequestForm = ({ finalize = false }: { finalize?: boolean }) => {
                                         return (
                                             <tr key={doc.document_id} className="border-b border-gray-200">
                                                 <td className="py-2 pr-3 text-[#154273] font-medium align-top">{idx + 1}.</td>
-                                                <td className="py-2 pr-3 align-top max-w-[200px]">
-                                                    <span className="text-[#154273] block truncate" title={displayName}>
+                                                <td className="py-2 pr-3 align-top">
+                                                    <span className="text-[#154273] block break-words">
                                                         {displayName}
                                                     </span>
                                                 </td>
@@ -383,6 +477,14 @@ const RequestForm = ({ finalize = false }: { finalize?: boolean }) => {
                 </div> : ( */}
                 <div className="w-full md:w-1/2 flex flex-col gap-6 px-6">
                 <div className="text-sm w-full flex flex-col gap-2 justify-between text-left items-center">
+                    <div className="text-2xl font-bold self-start">Download WOO rapport</div>
+                    <div>Download het volledige WOO rapport als PDF, inclusief alle bronverwijzingen en bijlagen.</div>
+                    <button onClick={handleDownloadPdf} disabled={submitting} className="text-2xl display-inline-block bg-[#154273] self-end text-white px-4 py-2">
+                    Download rapport
+                    </button>
+                </div>
+
+                <div className="text-sm w-full flex flex-col gap-2 justify-between text-left items-center">
                     <div className="text-2xl font-bold self-start">Informatie verzoek</div>
                     <div>Kies deze optie als je aanvullende informatie zoekt omdat je vraag nog niet volledig beantwoord kon worden met de openbaar beschikbare gegevens. Deze route biedt ruimte om, wanneer dat passend is, extra of meer contextuele informatie te verstrekken.</div>
                     <button onClick={() => setSubmitModal({ isOpen: true, type: 'informatieverzoek' })} disabled={submitting} className="text-2xl display-inline-block bg-[#F68153] self-end text-white px-4 py-2">
@@ -402,6 +504,12 @@ const RequestForm = ({ finalize = false }: { finalize?: boolean }) => {
                </>
             ) : (
                 <>
+            <div className="text-sm w-full flex justify-between items-center pt-6">Download het volledige WOO rapport als PDF.
+                <button onClick={handleDownloadPdf} disabled={submitting} className="text-sm display-inline-block bg-[#154273] text-white px-2 py-1">
+                    Download rapport
+                </button>
+            </div>
+
             <div className="text-sm w-full flex justify-between items-center pt-6">Ben je tevreden met deze informatie? Stuur jouw verzoek naar je mailadres. 
                 <button onClick={() => setIsEmailModalOpen(true)} disabled={submitting} className="text-sm display-inline-block bg-[#F68153] text-white px-2 py-1">
                   Ontvang informatie
