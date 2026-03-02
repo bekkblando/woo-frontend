@@ -7,6 +7,7 @@ import Finalize from './pages/Finalize'
 import CompletedRequest from './pages/CompletedRequest'
 import Status from './pages/Status'
 import Admin from './pages/Admin'
+import Privacy from './pages/Privacy'
 
 function App() {
   return (
@@ -18,6 +19,7 @@ function App() {
         <Route path="/completed-request" element={<CompletedRequest />} />
         <Route path="/status" element={<Status />} />
         <Route path="/admin" element={<Admin />} />
+        <Route path="/privacy" element={<Privacy />} />
       </Routes>
     </RequestFormProvider>
   )

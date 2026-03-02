@@ -6,6 +6,7 @@ import type { Answer } from '../context/RequestFormContext';
 import StatusBar from './ui/status-bar';
 import PDFModal from './PDFModal';
 import EmailModal from './EmailModal';
+import WooSubmitModal from './WooSubmitModal';
 import ReactMarkdown from 'react-markdown';
 import { toast } from 'react-toastify';
 
@@ -153,6 +154,10 @@ const RequestForm = ({ finalize = false }: { finalize?: boolean }) => {
     const [searchParams] = useSearchParams();
     const navigate = useNavigate();
     const [isEmailModalOpen, setIsEmailModalOpen] = useState(false);
+    const [submitModal, setSubmitModal] = useState<{
+        isOpen: boolean;
+        type: 'informatieverzoek' | 'woo_verzoek';
+    }>({ isOpen: false, type: 'informatieverzoek' });
 
     if (!requestForm) return null;
     
@@ -253,7 +258,7 @@ const RequestForm = ({ finalize = false }: { finalize?: boolean }) => {
                 <div className="text-sm w-full flex flex-col gap-2 justify-between text-left items-center">
                     <div className="text-2xl font-bold self-start">Informatie verzoek</div>
                     <div>Kies deze optie als je aanvullende informatie zoekt omdat je vraag nog niet volledig beantwoord kon worden met de openbaar beschikbare gegevens. Deze route biedt ruimte om, wanneer dat passend is, extra of meer contextuele informatie te verstrekken.</div>
-                    <button onClick={() => {}} disabled={submitting} className="text-2xl display-inline-block bg-[#F68153] self-end text-white px-4 py-2">
+                    <button onClick={() => setSubmitModal({ isOpen: true, type: 'informatieverzoek' })} disabled={submitting} className="text-2xl display-inline-block bg-[#F68153] self-end text-white px-4 py-2">
                     Stuur een informatieverzoek
                     </button>
                 </div>
@@ -262,12 +267,11 @@ const RequestForm = ({ finalize = false }: { finalize?: boolean }) => {
                 <div className="mt-6 w-full flex flex-col gap-2 justify-between text-left items-center">
                         <div className="text-2xl font-bold self-start">WOO verzoek</div>
                         <div>Kies deze optie als je een formele informatieaanvraag wilt indienen waarop de overheid binnen vier tot zes weken moet reageren. Je verzoek wordt behandeld volgens de Wet open overheid (Woo), en waar mogelijk ontvang je relevante documenten en toelichtingen om je vraag volledig te beantwoorden.</div>
-                    <button onClick={handleSubmit} disabled={submitting} className="text-2xl display-inline-block bg-[#03689B] self-end text-white px-4 py-2">
+                    <button onClick={() => setSubmitModal({ isOpen: true, type: 'woo_verzoek' })} disabled={submitting} className="text-2xl display-inline-block bg-[#03689B] self-end text-white px-4 py-2">
                     Stuur een WOO verzoek
                     </button>
                 </div>
                 </div>
-                {/* )} */}
                </>
             ) : (
                 <>
@@ -289,6 +293,12 @@ const RequestForm = ({ finalize = false }: { finalize?: boolean }) => {
                 isOpen={isEmailModalOpen}
                 onClose={() => setIsEmailModalOpen(false)}
                 onSubmit={handleSendPdf}
+            />
+            <WooSubmitModal
+                isOpen={submitModal.isOpen}
+                onClose={() => setSubmitModal(prev => ({ ...prev, isOpen: false }))}
+                wooRequestId={searchParams.get("wooRequestId")}
+                submissionType={submitModal.type}
             />
         </div>
     );
