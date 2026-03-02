@@ -4,6 +4,7 @@ import useChat from "../hooks/useChat";
 import TypewriterStreaming from "./ui/typewriter-streaming.tsx";
 import {  IconMicrophone, IconSend2 } from "@tabler/icons-react";
 import { RequestFormContext } from "../context/RequestFormContext.tsx";
+import ReactMarkdown from "react-markdown";
 
 
 
@@ -82,8 +83,25 @@ const Chat = ({ initialMessages }: ChatProps) => {
             <div className="flex-1 overflow-y-auto p-2 md:p-8">
                 {messages.map((message: { role: string; content: string }, index: number) => (
                     <div key={index} className={`flex ${message.role === "assistant" ? "justify-start" : "justify-end"} w-full mb-2`}>
-                        <div className="max-w-[80%] bg-[#EFF7FC] border-2 border-[#03689B] p-2 rounded-mdwhitespace-pre-wrap text-[#154273]">
-                            {message.content === animatedText ? null : message.content}
+                        <div className="max-w-[80%] bg-[#EFF7FC] border-2 border-[#03689B] p-2 rounded-md text-[#154273] prose prose-sm prose-blue max-w-none [&_ol]:list-decimal [&_ol]:pl-5 [&_ul]:list-disc [&_ul]:pl-5 [&_li]:my-1 [&_p]:my-2">
+                            {message.content === animatedText ? null : (
+                                <ReactMarkdown
+                                    components={{
+                                        a: ({ href, children }) => (
+                                            <a
+                                                href={href}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="text-blue-600 underline hover:text-blue-800"
+                                            >
+                                                {children}
+                                            </a>
+                                        ),
+                                    }}
+                                >
+                                    {message.content}
+                                </ReactMarkdown>
+                            )}
                         </div>
                     </div>
                 ))}

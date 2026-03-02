@@ -116,7 +116,10 @@ const useChat = (conversationId: string | null, functionsCaller: (functionDefini
                     }
                 } else if (parsedChunk.completed || parsedChunk.type === 'complete') {
                     if (messageContent) {
-                        updateMessagesWhenCompleted(messageContent);
+                        // Use processed content from backend (with [ORG:ID] tags replaced)
+                        // if available, otherwise fall back to raw accumulated content
+                        const finalContent = parsedChunk.content || messageContent;
+                        updateMessagesWhenCompleted(finalContent);
                         messageContent = "";
                         setAnimatedText("");
                     }

@@ -3,7 +3,6 @@ import { motion } from 'framer-motion';
 import { cn } from '../../utils/cn';
 
 import Markdown from 'react-markdown'
-import { set } from 'lodash';
 
 interface TypewriterProps {
     animatedText: string;
@@ -53,11 +52,26 @@ interface TypewriterProps {
     return (
       <div
         className={cn(
-          'text-left',
+          'text-left prose prose-sm prose-blue max-w-none [&_ol]:list-decimal [&_ol]:pl-5 [&_ul]:list-disc [&_ul]:pl-5 [&_li]:my-1 [&_p]:my-2',
           className
         )}
       >
-        <Markdown>{displayedText}</Markdown>
+        <Markdown
+          components={{
+            a: ({ href, children }) => (
+              <a
+                href={href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-600 underline hover:text-blue-800"
+              >
+                {children}
+              </a>
+            ),
+          }}
+        >
+          {displayedText}
+        </Markdown>
         {isAnimating && (
           <motion.span
             initial={{
