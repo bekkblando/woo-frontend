@@ -59,14 +59,14 @@ const Chat = ({ initialMessages }: ChatProps) => {
                 saved: true
             }));
 
-            const existingTexts = new Set(requestForm.questions.map(q => q.question));
-            const uniqueNewQuestions = newQuestionObjects.filter(
-                (q: any) => !existingTexts.has(q.question)
-            );
-
-            if (uniqueNewQuestions.length > 0) {
-                requestForm.setQuestions([...requestForm.questions, ...uniqueNewQuestions]);
-            }
+            requestForm.setQuestions(prev => {
+                const existingTexts = new Set(prev.map(q => q.question));
+                const uniqueNewQuestions = newQuestionObjects.filter(
+                    (q: any) => !existingTexts.has(q.question)
+                );
+                if (uniqueNewQuestions.length === 0) return prev;
+                return [...prev, ...uniqueNewQuestions];
+            });
         }
     };
 

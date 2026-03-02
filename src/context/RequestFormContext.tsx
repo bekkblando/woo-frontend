@@ -40,7 +40,7 @@ export type Question = {
 };
 
 type RequestFormContextValue = {
-  setQuestions: (value: Question[]) => void;
+  setQuestions: (value: Question[] | ((prev: Question[]) => Question[])) => void;
   questions: Question[];
   updateAnswer: (answer: Answer) => void;
 };
