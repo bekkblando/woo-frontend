@@ -171,7 +171,13 @@ const AnswerViewer = ({ answer, documentNames }: { answer: Answer; documentNames
                                     const docName = block.document_id ? documentNames[block.document_id] : undefined;
                                     return (
                                         <div key={index} className="border-l-2 border-[#F68153] pl-3 py-2">
-                                            <EvidenceQuote quote={block.quote} formattedQuote={block.formatted_quote} />
+                                            {block.no_validated_quote ? (
+                                                <div className="text-gray-500 text-sm italic mb-2">
+                                                    Geen directe citaat beschikbaar — zie het brondocument voor relevante informatie.
+                                                </div>
+                                            ) : (
+                                                <EvidenceQuote quote={block.quote} formattedQuote={block.formatted_quote} />
+                                            )}
                                             {hasDocument ? (
                                                 <button
                                                     onClick={() => openPdfModal(block.document_id!, block.page_number!)}

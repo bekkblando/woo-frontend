@@ -12,6 +12,7 @@ export type Answer = {
       content?: string;
       quote?: string;
       formatted_quote?: string;
+      no_validated_quote?: boolean;
       chunk_id?: string;
       document_id?: string;
       page_number?: number;
