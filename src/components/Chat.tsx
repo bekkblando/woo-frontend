@@ -2,11 +2,18 @@ import { useContext, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import useChat from "../hooks/useChat";
 import TypewriterStreaming from "./ui/typewriter-streaming.tsx";
-import {  IconMicrophone, IconSend2 } from "@tabler/icons-react";
+import { IconMicrophone, IconPaperclip, IconSend2, IconX } from "@tabler/icons-react";
 import { RequestFormContext } from "../context/RequestFormContext.tsx";
 import ReactMarkdown from "react-markdown";
 
-
+const ALLOWED_EXTENSIONS = [
+    "pdf", "csv", "jsonl", "xml", "txt", "json",
+    "md", "html", "docx", "xlsx", "tsv",
+    "yaml", "yml", "log",
+];
+const ACCEPT_STRING = ALLOWED_EXTENSIONS.map(e => `.${e}`).join(",");
+const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB
+const MAX_FILES = 2;
 
 interface ChatProps {
     initialMessages?: { role: string; content: string }[] | null;
@@ -16,19 +23,20 @@ const Chat = ({ initialMessages }: ChatProps) => {
     const [searchParams] = useSearchParams();
     const chatId = searchParams.get("chatId");
     const [content, setContent] = useState<string>("");
+    const [pendingFiles, setPendingFiles] = useState<File[]>([]);
+    const [fileError, setFileError] = useState<string>("");
     const bottomOfChatContainer = useRef<HTMLDivElement | null>(null);
+    const fileInputRef = useRef<HTMLInputElement | null>(null);
     const requestForm = useContext(RequestFormContext);
 
     const functionCaller = async (_definition: { name: string; arguments: any }) => {
         console.log("Function caller", _definition);
         if (_definition.name === "woo_question_answered") {
             console.log("Updating answer", _definition.arguments);
-            // Update the answer of the question in the request form
-            // Pass all fields including details (with blocks) and answered status
-            requestForm?.updateAnswer({ 
-                id: _definition.arguments.id, 
-                woo_question: _definition.arguments.woo_question, 
-                answer: _definition.arguments.answer, 
+            requestForm?.updateAnswer({
+                id: _definition.arguments.id,
+                woo_question: _definition.arguments.woo_question,
+                answer: _definition.arguments.answer,
                 chunks: _definition.arguments.chunks || [],
                 details: _definition.arguments.details || {},
                 answered: _definition.arguments.answered
@@ -36,11 +44,9 @@ const Chat = ({ initialMessages }: ChatProps) => {
             return;
         }
         if (_definition.name === "questions_added") {
-            // Handle questions added by backend
             const data = _definition.arguments;
             if (!data.questions || !Array.isArray(data.questions) || !requestForm) return;
 
-            // Transform backend question format to frontend format
             const newQuestionObjects = data.questions.map((q: any) => ({
                 id: q.id || 0,
                 question: q.question || "",
@@ -49,11 +55,10 @@ const Chat = ({ initialMessages }: ChatProps) => {
                     answer: q.answer.answer || "",
                     chunks: q.answer.chunks || []
                 } : { id: 0, answer: "", chunks: [] },
-                answer_loading: !q.answer, // Loading if no answer yet
-                saved: true // Questions from backend are already saved
+                answer_loading: !q.answer,
+                saved: true
             }));
 
-            // Find new questions (by question text) to avoid duplicates
             const existingTexts = new Set(requestForm.questions.map(q => q.question));
             const uniqueNewQuestions = newQuestionObjects.filter(
                 (q: any) => !existingTexts.has(q.question)
@@ -64,7 +69,15 @@ const Chat = ({ initialMessages }: ChatProps) => {
             }
         }
     };
-    const { messages, animatedText, sendMessage, currentMessageKey } = useChat(chatId, functionCaller, "Hello, how can I help you?", initialMessages);
+
+    const {
+        messages,
+        animatedText,
+        sendMessage,
+        currentMessageKey,
+        uploadedDocuments,
+        removeDocument,
+    } = useChat(chatId, functionCaller, "Hello, how can I help you?", initialMessages);
 
     useEffect(() => {
         if (bottomOfChatContainer.current) {
@@ -72,10 +85,51 @@ const Chat = ({ initialMessages }: ChatProps) => {
         }
     }, [messages, animatedText]);
 
+    // --- File handling ---
+    const totalAttachedCount = pendingFiles.length + uploadedDocuments.length;
+
+    const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+        setFileError("");
+        const selected = Array.from(e.target.files || []);
+        if (selected.length === 0) return;
+
+        // Check total count
+        if (totalAttachedCount + selected.length > MAX_FILES) {
+            setFileError(`U kunt maximaal ${MAX_FILES} documenten bijvoegen.`);
+            if (fileInputRef.current) fileInputRef.current.value = "";
+            return;
+        }
+
+        // Validate each file
+        for (const file of selected) {
+            const ext = file.name.rsplit ? "" : file.name.split(".").pop()?.toLowerCase() || "";
+            if (!ALLOWED_EXTENSIONS.includes(ext)) {
+                setFileError(`Bestandstype '.${ext}' is niet toegestaan.`);
+                if (fileInputRef.current) fileInputRef.current.value = "";
+                return;
+            }
+            if (file.size > MAX_FILE_SIZE) {
+                setFileError(`'${file.name}' is groter dan 5MB.`);
+                if (fileInputRef.current) fileInputRef.current.value = "";
+                return;
+            }
+        }
+
+        setPendingFiles(prev => [...prev, ...selected]);
+        if (fileInputRef.current) fileInputRef.current.value = "";
+    };
+
+    const removePendingFile = (index: number) => {
+        setPendingFiles(prev => prev.filter((_, i) => i !== index));
+        setFileError("");
+    };
+
     const submitContent = () => {
-        if (!content.trim()) return;
-        sendMessage(content);
+        if (!content.trim() && pendingFiles.length === 0) return;
+        sendMessage(content, pendingFiles.length > 0 ? pendingFiles : undefined);
         setContent("");
+        setPendingFiles([]);
+        setFileError("");
     };
 
     return (
@@ -114,7 +168,68 @@ const Chat = ({ initialMessages }: ChatProps) => {
                 )}
                 <div ref={bottomOfChatContainer} />
             </div>
+
+            {/* Attached files chips */}
+            {(uploadedDocuments.length > 0 || pendingFiles.length > 0) && (
+                <div className="px-3 pt-2 flex flex-wrap gap-2">
+                    {uploadedDocuments.map((doc) => (
+                        <span
+                            key={doc.s3_key}
+                            className="inline-flex items-center gap-1 bg-[#03689B]/10 text-[#154273] text-xs px-2 py-1 rounded-full"
+                        >
+                            {doc.filename}
+                            <button
+                                onClick={() => removeDocument(doc.s3_key)}
+                                className="hover:text-red-600 transition-colors"
+                                aria-label={`Verwijder ${doc.filename}`}
+                            >
+                                <IconX className="h-3 w-3" />
+                            </button>
+                        </span>
+                    ))}
+                    {pendingFiles.map((file, idx) => (
+                        <span
+                            key={`pending-${idx}`}
+                            className="inline-flex items-center gap-1 bg-[#F68153]/15 text-[#154273] text-xs px-2 py-1 rounded-full"
+                        >
+                            {file.name}
+                            <button
+                                onClick={() => removePendingFile(idx)}
+                                className="hover:text-red-600 transition-colors"
+                                aria-label={`Verwijder ${file.name}`}
+                            >
+                                <IconX className="h-3 w-3" />
+                            </button>
+                        </span>
+                    ))}
+                </div>
+            )}
+
+            {/* File error message */}
+            {fileError && (
+                <div className="px-3 pt-1 text-red-600 text-xs">{fileError}</div>
+            )}
+
+            {/* Input bar */}
             <div className="px-2 flex items-center gap-2">
+                {/* Hidden file input */}
+                <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept={ACCEPT_STRING}
+                    multiple
+                    className="hidden"
+                    onChange={handleFileSelect}
+                />
+                <button
+                    className="px-1 py-1 text-[#154273] hover:text-[#03689B] transition-colors disabled:opacity-40"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={totalAttachedCount >= MAX_FILES}
+                    aria-label="Bestand bijvoegen"
+                    title="Bestand bijvoegen"
+                >
+                    <IconPaperclip className="h-5 w-5" />
+                </button>
                 <input
                     className="flex-1 bg-transparent text-[#154273] text-lg outline-none placeholder:text-[#154273]/60 border-0 py-4"
                     type="text"
@@ -125,7 +240,7 @@ const Chat = ({ initialMessages }: ChatProps) => {
                         if (e.key === "Enter") submitContent();
                     }}
                 />
-                <IconMicrophone className="inline-block"/>
+                <IconMicrophone className="inline-block" />
                 <button className="px-3 py-1" onClick={submitContent} aria-label="Send">
                     <IconSend2 />
                 </button>

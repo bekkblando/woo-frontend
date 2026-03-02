@@ -5,7 +5,9 @@ import { RequestFormContext } from '../context/RequestFormContext';
 import type { Answer } from '../context/RequestFormContext';
 import StatusBar from './ui/status-bar';
 import PDFModal from './PDFModal';
+import EmailModal from './EmailModal';
 import ReactMarkdown from 'react-markdown';
+import { toast } from 'react-toastify';
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://127.0.0.1:8003";
 
@@ -150,8 +152,7 @@ const RequestForm = ({ finalize = false }: { finalize?: boolean }) => {
     const [submitting, setSubmitting] = useState(false);
     const [searchParams] = useSearchParams();
     const navigate = useNavigate();
-    const [userEmail, setUserEmail] = useState<string>("");
-    const [emailSubmitted, setEmailSubmitted] = useState<boolean>(false);
+    const [isEmailModalOpen, setIsEmailModalOpen] = useState(false);
 
     if (!requestForm) return null;
     
@@ -162,7 +163,7 @@ const RequestForm = ({ finalize = false }: { finalize?: boolean }) => {
                 const response = await fetch(`${BACKEND_URL}/api/finalize/`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ wooRequestId: searchParams.get("wooRequestId"), email: userEmail })
+                    body: JSON.stringify({ wooRequestId: searchParams.get("wooRequestId") })
                 });
                 if (!response.ok) {
                     const errorData = await response.json().catch(() => ({ error: 'Failed to finalize request' }));
@@ -178,6 +179,33 @@ const RequestForm = ({ finalize = false }: { finalize?: boolean }) => {
         } else {
             navigate(`/finalize?chatId=${searchParams.get("chatId")}&wooRequestId=${searchParams.get("wooRequestId")}`);
         }
+    };
+
+    const handleSendPdf = async (email: string) => {
+        const wooRequestId = searchParams.get("wooRequestId");
+        if (!wooRequestId) {
+            throw new Error('WOO verzoek ID niet gevonden');
+        }
+
+        const response = await fetch(`${BACKEND_URL}/api/send-woo-request-pdf/`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                woo_request_id: wooRequestId,
+                email: email 
+            })
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({ error: 'Fout bij verzenden' }));
+            throw new Error(errorData.error || 'Fout bij verzenden van PDF');
+        }
+
+        await response.json();
+        toast.success('PDF succesvol verzonden naar uw e-mailadres!', {
+            position: "top-right",
+            autoClose: 3000,
+        });
     };
 
   
@@ -235,7 +263,7 @@ const RequestForm = ({ finalize = false }: { finalize?: boolean }) => {
                         <div className="text-2xl font-bold self-start">WOO verzoek</div>
                         <div>Kies deze optie als je een formele informatieaanvraag wilt indienen waarop de overheid binnen vier tot zes weken moet reageren. Je verzoek wordt behandeld volgens de Wet open overheid (Woo), en waar mogelijk ontvang je relevante documenten en toelichtingen om je vraag volledig te beantwoorden.</div>
                     <button onClick={handleSubmit} disabled={submitting} className="text-2xl display-inline-block bg-[#03689B] self-end text-white px-4 py-2">
-                    Stuur een informatieverzoek
+                    Stuur een WOO verzoek
                     </button>
                 </div>
                 </div>
@@ -244,7 +272,7 @@ const RequestForm = ({ finalize = false }: { finalize?: boolean }) => {
             ) : (
                 <>
             <div className="text-sm w-full flex justify-between items-center pt-6">Ben je tevreden met deze informatie? Stuur jouw verzoek naar je mailadres. 
-                <button onClick={handleSubmit} disabled={submitting} className="text-sm display-inline-block bg-[#F68153] text-white px-2 py-1">
+                <button onClick={() => setIsEmailModalOpen(true)} disabled={submitting} className="text-sm display-inline-block bg-[#F68153] text-white px-2 py-1">
                   Ontvang informatie
                 </button>
             </div>
@@ -257,6 +285,11 @@ const RequestForm = ({ finalize = false }: { finalize?: boolean }) => {
             </div>
             </>
             )}
+            <EmailModal
+                isOpen={isEmailModalOpen}
+                onClose={() => setIsEmailModalOpen(false)}
+                onSubmit={handleSendPdf}
+            />
         </div>
     );
 };

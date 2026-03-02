@@ -15,13 +15,23 @@ interface Message {
     content: string;
     function_call?: FunctionDefinition;
 }
+
+export interface UploadedDocument {
+    s3_key: string;
+    filename: string;
+    content_type: string;
+    size?: number;
+}
+
 interface UseChatReturn {
     messages: Message[];
     animatedText: string;
     isComplete: boolean;
-    sendMessage: (message: string) => Promise<void>;
+    sendMessage: (message: string, files?: File[]) => Promise<void>;
     loading: boolean;
     currentMessageKey: string;
+    uploadedDocuments: UploadedDocument[];
+    removeDocument: (s3Key: string) => Promise<void>;
 }
 
 
@@ -50,6 +60,9 @@ const useChat = (conversationId: string | null, functionsCaller: (functionDefini
     const [searchParams, setSearchParams] = useSearchParams();
     const [currentMessageKey, setCurrentMessageKey] = useState<string>(generateSecureRandomKey());
     const wsRef = useRef<ReconnectingWebSocket | null>(null);
+    const [uploadedDocuments, setUploadedDocuments] = useState<UploadedDocument[]>([]);
+    // Track the effective conversation id (may be set before searchParams update)
+    const effectiveConversationIdRef = useRef<string | null>(conversationId);
 
 
     // Update messages if initialMessages change (e.g., when conversation is loaded)
@@ -148,16 +161,82 @@ const useChat = (conversationId: string | null, functionsCaller: (functionDefini
         };
     }, []);
 
+    // Keep effectiveConversationIdRef in sync
+    useEffect(() => {
+        effectiveConversationIdRef.current = conversationId;
+    }, [conversationId]);
+
     const updateMessagesWhenCompleted = (messageContent:string) => {
         setIsComplete(true);
         setMessages(prevMessages => [...prevMessages, {role: "assistant", content: messageContent}]);
     }
-    const sendMessage = useCallback(async (message: string) => {
+
+    const uploadFiles = useCallback(async (files: File[]): Promise<string | null> => {
+        let convId = effectiveConversationIdRef.current;
+        for (const file of files) {
+            const formData = new FormData();
+            formData.append('file', file);
+            if (convId) {
+                formData.append('conversation_id', convId);
+            }
+
+            const res = await fetch(`${BACKEND_URL}/api/conversations/upload/`, {
+                method: 'POST',
+                body: formData,
+            });
+
+            if (!res.ok) {
+                const errData = await res.json().catch(() => ({}));
+                throw new Error(errData.error || 'Failed to upload file');
+            }
+
+            const data = await res.json();
+            // Use the conversation_id returned from the upload (may be newly created)
+            if (data.conversation_id) {
+                convId = String(data.conversation_id);
+                effectiveConversationIdRef.current = convId;
+            }
+            if (data.document) {
+                setUploadedDocuments(prev => [...prev, data.document as UploadedDocument]);
+            }
+        }
+        return convId;
+    }, []);
+
+    const removeDocument = useCallback(async (s3Key: string) => {
+        const convId = effectiveConversationIdRef.current;
+        if (!convId) return;
+
+        const res = await fetch(
+            `${BACKEND_URL}/api/conversations/${convId}/documents/delete/`,
+            {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ s3_key: s3Key }),
+            }
+        );
+
+        if (res.ok || res.status === 204) {
+            setUploadedDocuments(prev => prev.filter(d => d.s3_key !== s3Key));
+        } else {
+            const errData = await res.json().catch(() => ({}));
+            console.error('Failed to delete document', errData);
+        }
+    }, []);
+
+    const sendMessage = useCallback(async (message: string, files?: File[]) => {
         try {
             setIsComplete(false);
             setAnimatedText("");
             setCurrentMessageKey(generateSecureRandomKey());
             setMessages(prevMessages => [...prevMessages, {role: "user", content: message}]);
+
+            // Upload files first if provided
+            let activeConvId = effectiveConversationIdRef.current || conversationId;
+            if (files && files.length > 0) {
+                const newConvId = await uploadFiles(files);
+                if (newConvId) activeConvId = newConvId;
+            }
 
             // Send message via HTTP POST instead of WebSocket
             const response = await fetch(`${BACKEND_URL}/api/conversations/send-message/`, {
@@ -166,7 +245,7 @@ const useChat = (conversationId: string | null, functionsCaller: (functionDefini
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    conversation_id: conversationId || null,
+                    conversation_id: activeConvId || null,
                     message: message
                 })
             });
@@ -178,15 +257,18 @@ const useChat = (conversationId: string | null, functionsCaller: (functionDefini
 
             const data = await response.json();
             // Update conversationId if we got a new one
+            if (data.conversation_id) {
+                effectiveConversationIdRef.current = String(data.conversation_id);
+            }
             if ((data.conversation_id && data.conversation_id !== conversationId) && (data.woo_request_id && data.woo_request_id !== searchParams.get('wooRequestId'))) {
                 setSearchParams({ chatId: data.conversation_id, wooRequestId: data.woo_request_id }, { replace: true } as any);
             }
         } catch (error) {
             console.error("Failed to send message", error);
         }
-    }, [conversationId, setSearchParams]);
+    }, [conversationId, setSearchParams, uploadFiles]);
     
-    return { messages, animatedText, isComplete, sendMessage, loading, currentMessageKey };
+    return { messages, animatedText, isComplete, sendMessage, loading, currentMessageKey, uploadedDocuments, removeDocument };
 };
 
 
