@@ -1,5 +1,6 @@
 import { createContext, useMemo, useState, useEffect, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
+import { getCSRFHeaders } from "../hooks/authentication_helper";
 
 export type Answer = {
   id: number;
@@ -81,8 +82,9 @@ export function RequestFormProvider({ children }: Props) {
         `${BACKEND_URL}/api/conversations/${chatId}/documents/delete/`,
         {
           method: 'DELETE',
-          headers: { 'Content-Type': 'application/json' },
+          headers: getCSRFHeaders({ 'Content-Type': 'application/json' }),
           body: JSON.stringify({ s3_key: s3Key }),
+          credentials: 'include'
         }
       );
       if (res.ok || res.status === 204) {
@@ -109,11 +111,12 @@ export function RequestFormProvider({ children }: Props) {
             try {
                 const res = await fetch(`${BACKEND_URL}/api/woo-questions/`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: getCSRFHeaders({ 'Content-Type': 'application/json' }),
                     body: JSON.stringify({ 
                         question: question.question, 
                         woo_request: parseInt(wooRequestId) 
-                    })
+                    }),
+                    credentials: 'include'
                 });
                 
                 if (!res.ok) {

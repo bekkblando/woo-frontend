@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import ReconnectingWebSocket from 'reconnecting-websocket';
+import { getCSRFHeaders } from './authentication_helper';
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://127.0.0.1:8003";
 
@@ -183,7 +184,9 @@ const useChat = (conversationId: string | null, functionsCaller: (functionDefini
 
             const res = await fetch(`${BACKEND_URL}/api/conversations/upload/`, {
                 method: 'POST',
+                headers: getCSRFHeaders(),
                 body: formData,
+                credentials: 'include'
             });
 
             if (!res.ok) {
@@ -212,8 +215,9 @@ const useChat = (conversationId: string | null, functionsCaller: (functionDefini
             `${BACKEND_URL}/api/conversations/${convId}/documents/delete/`,
             {
                 method: 'DELETE',
-                headers: { 'Content-Type': 'application/json' },
+                headers: getCSRFHeaders({ 'Content-Type': 'application/json' }),
                 body: JSON.stringify({ s3_key: s3Key }),
+                credentials: 'include'
             }
         );
 
@@ -247,13 +251,12 @@ const useChat = (conversationId: string | null, functionsCaller: (functionDefini
             // Send message via HTTP POST instead of WebSocket
             const response = await fetch(`${BACKEND_URL}/api/conversations/send-message/`, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
+                headers: getCSRFHeaders({ 'Content-Type': 'application/json' }),
                 body: JSON.stringify({
                     conversation_id: activeConvId || null,
                     message: message
-                })
+                }),
+                credentials: 'include'
             });
 
             if (!response.ok) {

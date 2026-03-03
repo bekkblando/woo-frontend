@@ -6,6 +6,7 @@ import type { Question, Answer } from "../context/RequestFormContext";
 import SEO from "../components/SEO";
 import PDFModal from "../components/PDFModal";
 import ReactMarkdown from "react-markdown";
+import { getCSRFHeaders } from "../hooks/authentication_helper";
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://127.0.0.1:8003";
 
@@ -53,7 +54,7 @@ const Admin = () => {
 
     const openPdfModal = useCallback(async (documentId: string, pageNumber: number) => {
         try {
-            const res = await fetch(`${BACKEND_URL}/api/documents/${documentId}/presigned-url/`);
+            const res = await fetch(`${BACKEND_URL}/api/documents/${documentId}/presigned-url/`, { credentials: 'include' });
             if (!res.ok) throw new Error('Failed to fetch presigned URL');
             const data = await res.json();
             setPdfModal({
@@ -78,7 +79,7 @@ const Admin = () => {
             try {
                 let response;
                 if (chatId && !isNaN(parseInt(chatId))) {
-                    response = await fetch(`${BACKEND_URL}/api/conversations/${chatId}/`);
+                    response = await fetch(`${BACKEND_URL}/api/conversations/${chatId}/`, { credentials: 'include' });
                 } else {
                     console.error('No valid chatId provided');
                     setLoading(false);
@@ -134,13 +135,12 @@ const Admin = () => {
         try {
             const response = await fetch(`${BACKEND_URL}/api/search/`, {
                 method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                },
+                headers: getCSRFHeaders({ "Content-Type": "application/json" }),
                 body: JSON.stringify({
                     query: query,
                     include_private: includePrivate,
                 }),
+                credentials: 'include'
             });
 
             if (response.ok) {

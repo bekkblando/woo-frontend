@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { IconX, IconSparkles, IconPaperclip, IconTrash, IconLoader2, IconChevronDown } from '@tabler/icons-react';
 import { toast } from 'react-toastify';
+import { getCSRFHeaders } from '../hooks/authentication_helper';
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://127.0.0.1:8003";
 
@@ -105,7 +106,7 @@ const WooSubmitModal: React.FC<WooSubmitModalProps> = ({
   const fetchPrefill = useCallback(async (requestId: string) => {
     setIsPrefilling(true);
     try {
-      const res = await fetch(`${BACKEND_URL}/api/woo-requests/${requestId}/prefill/`);
+      const res = await fetch(`${BACKEND_URL}/api/woo-requests/${requestId}/prefill/`, { credentials: 'include' });
       if (!res.ok) throw new Error('Prefill request failed');
       const data = await res.json();
 
@@ -196,8 +197,9 @@ const WooSubmitModal: React.FC<WooSubmitModalProps> = ({
 
       const res = await fetch(`${BACKEND_URL}/api/woo-requests/${wooRequestId}/submit-form/`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getCSRFHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify(payload),
+        credentials: 'include'
       });
 
       if (!res.ok) {
@@ -239,7 +241,9 @@ const WooSubmitModal: React.FC<WooSubmitModalProps> = ({
       // We'll use the conversation's upload endpoint
       const res = await fetch(`${BACKEND_URL}/api/conversations/upload/`, {
         method: 'POST',
+        headers: getCSRFHeaders(),
         body: formData,
+        credentials: 'include'
       });
 
       if (!res.ok) {

@@ -10,10 +10,20 @@ import Admin from './pages/Admin'
 import Privacy from './pages/Privacy'
 import DocumentViewer from './pages/DocumentViewer'
 import DocumentDownload from './pages/DocumentDownload'
+import { useEffect } from 'react'
+import { setCsrfTokenIfNotPresent } from './hooks/authentication_helper'
+
+const AuthenticationHelper = () => {
+  useEffect(() => {
+    setCsrfTokenIfNotPresent();
+  }, []);
+  return null;
+};  
 
 function App() {
   return (
     <RequestFormProvider>
+      <AuthenticationHelper />
       <Routes>
         <Route path="/" element={<Landing />} />
         <Route path="/request" element={<RequestMaker />} />

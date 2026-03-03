@@ -10,6 +10,7 @@ import WooSubmitModal from './WooSubmitModal';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { toast } from 'react-toastify';
+import { getCSRFHeaders } from '../hooks/authentication_helper';
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://127.0.0.1:8003";
 
@@ -98,7 +99,7 @@ const AnswerViewer = ({ answer, documentNames }: { answer: Answer; documentNames
 
     const openPdfModal = useCallback(async (documentId: string, pageNumber: number) => {
         try {
-            const res = await fetch(`${BACKEND_URL}/api/documents/${documentId}/presigned-url/`);
+            const res = await fetch(`${BACKEND_URL}/api/documents/${documentId}/presigned-url/`, { credentials: 'include' });
             if (!res.ok) throw new Error('Failed to fetch presigned URL');
             const data = await res.json();
             setPdfModal({
@@ -246,7 +247,7 @@ const RequestForm = ({ finalize = false }: { finalize?: boolean }) => {
 
     const handleDownloadDocument = useCallback(async (documentId: string, documentName: string) => {
         try {
-            const res = await fetch(`${BACKEND_URL}/api/documents/${documentId}/presigned-url/`);
+            const res = await fetch(`${BACKEND_URL}/api/documents/${documentId}/presigned-url/`, { credentials: 'include' });
             if (!res.ok) throw new Error('Failed to fetch presigned URL');
             const data = await res.json();
             const fileName = data.name || documentName || 'document.pdf';
@@ -296,7 +297,7 @@ const RequestForm = ({ finalize = false }: { finalize?: boolean }) => {
             await Promise.all(
                 missing.map(async (docId) => {
                     try {
-                        const res = await fetch(`${BACKEND_URL}/api/documents/${docId}/presigned-url/`);
+                        const res = await fetch(`${BACKEND_URL}/api/documents/${docId}/presigned-url/`, { credentials: 'include' });
                         if (res.ok) {
                             const data = await res.json();
                             if (data.name) newNames[docId] = data.name;
@@ -346,8 +347,9 @@ const RequestForm = ({ finalize = false }: { finalize?: boolean }) => {
             try {
                 const response = await fetch(`${BACKEND_URL}/api/finalize/`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ wooRequestId: searchParams.get("wooRequestId") })
+                    headers: getCSRFHeaders({ 'Content-Type': 'application/json' }),
+                    body: JSON.stringify({ wooRequestId: searchParams.get("wooRequestId") }),
+                    credentials: 'include'
                 });
                 if (!response.ok) {
                     const errorData = await response.json().catch(() => ({ error: 'Failed to finalize request' }));
@@ -373,11 +375,12 @@ const RequestForm = ({ finalize = false }: { finalize?: boolean }) => {
 
         const response = await fetch(`${BACKEND_URL}/api/send-woo-request-pdf/`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: getCSRFHeaders({ 'Content-Type': 'application/json' }),
             body: JSON.stringify({ 
                 woo_request_id: wooRequestId,
                 email: email 
-            })
+            }),
+            credentials: 'include'
         });
 
         if (!response.ok) {
@@ -399,7 +402,7 @@ const RequestForm = ({ finalize = false }: { finalize?: boolean }) => {
             return;
         }
         try {
-            const response = await fetch(`${BACKEND_URL}/api/woo-requests/${wooRequestId}/download-pdf/`);
+            const response = await fetch(`${BACKEND_URL}/api/woo-requests/${wooRequestId}/download-pdf/`, { credentials: 'include' });
             if (!response.ok) {
                 throw new Error('Fout bij downloaden van PDF');
             }

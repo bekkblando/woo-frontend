@@ -74,7 +74,7 @@ const RequestMaker = () => {
       if (chatId && !isNaN(parseInt(chatId))) {
         setLoading(true);
         try {
-          const response = await fetch(`${BACKEND_URL}/api/conversations/${chatId}/`);
+          const response = await fetch(`${BACKEND_URL}/api/conversations/${chatId}/`, { credentials: 'include' });
           if (response.ok) {
             const data: ConversationData = await response.json();
             console.log("Data", data);

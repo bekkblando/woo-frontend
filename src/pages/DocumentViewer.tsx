@@ -31,7 +31,7 @@ const DocumentViewer = () => {
     }
 
     try {
-      const res = await fetch(`${BACKEND_URL}/api/documents/${documentId}/presigned-url/`);
+      const res = await fetch(`${BACKEND_URL}/api/documents/${documentId}/presigned-url/`, { credentials: 'include' });
       if (!res.ok) {
         throw new Error(`Kon document niet ophalen (status ${res.status})`);
       }

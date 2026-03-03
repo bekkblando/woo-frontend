@@ -1,10 +1,7 @@
-import { useSearchParams } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import SEO from "../components/SEO";
 
 const CompletedRequest = () => {
-    const [searchParams, setSearchParams] = useSearchParams();
-    const wooRequestId = searchParams.get("wooRequestId");
     return (
         <div>
             <SEO
@@ -17,10 +14,10 @@ const CompletedRequest = () => {
                 canonicalUrl="/completed-request"
             />
             <Navbar />
-            <div className="w-1/2 flex flex-col gap-6 px-6 text-left items-center justify-start">
-            <div className="text-2xl font-bold self-start">MijnVerzoek • <span className="text-gray-500">aangevraagd</span></div>
-            <p className="text-left self-start">Je verzoek is ingediend. Druk op de knop Status om te zien hoe het ervoor staat.</p>
-            <a href={`/status?wooRequestId=${wooRequestId}`} className="self-start text-2xl display-inline-block bg-[#F68153] self-end text-white px-12 py-2">Status</a>
+            <div className="min-h-screen flex items-center justify-center">
+                <div className="text-center">
+                    <h1 className="text-3xl font-bold text-[#154273] mb-4">Uw WOO verzoek is ingediend</h1>
+                </div>
             </div>
         </div>
     );

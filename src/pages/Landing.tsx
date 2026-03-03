@@ -3,6 +3,7 @@ import { IconSend2, IconLoader2, IconPaperclip, IconX } from "@tabler/icons-reac
 import { useNavigate } from "react-router-dom";
 import SEO from "../components/SEO";
 import Navbar from "../components/Navbar";
+import { getCSRFHeaders } from "../hooks/authentication_helper";
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://127.0.0.1:8003";
 
@@ -80,7 +81,9 @@ const Landing = () => {
 
                 const res = await fetch(`${BACKEND_URL}/api/conversations/upload/`, {
                     method: 'POST',
+                    headers: getCSRFHeaders(),
                     body: formData,
+                    credentials: 'include'
                 });
 
                 if (!res.ok) {
@@ -112,8 +115,9 @@ const Landing = () => {
             `${BACKEND_URL}/api/conversations/${convId}/documents/delete/`,
             {
                 method: 'DELETE',
-                headers: { 'Content-Type': 'application/json' },
+                headers: getCSRFHeaders({ 'Content-Type': 'application/json' }),
                 body: JSON.stringify({ s3_key: s3Key }),
+                credentials: 'include'
             }
         );
 
@@ -129,13 +133,12 @@ const Landing = () => {
             // Send message via HTTP POST instead of WebSocket
             const response = await fetch(`${BACKEND_URL}/api/conversations/send-message/`, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
+                headers: getCSRFHeaders({ 'Content-Type': 'application/json' }),
                 body: JSON.stringify({
                     conversation_id: conversationIdRef.current || null,
                     message: content
-                })
+                }),
+                credentials: 'include'
             });
 
             if (!response.ok) {

@@ -33,7 +33,7 @@ const DocumentDownload = () => {
     try {
       // Step 1: Fetch presigned URL + name from backend proxy
       setStatus('loading');
-      const metaRes = await fetch(`${BACKEND_URL}/api/documents/${documentId}/presigned-url/`);
+      const metaRes = await fetch(`${BACKEND_URL}/api/documents/${documentId}/presigned-url/`, { credentials: 'include' });
       if (!metaRes.ok) {
         throw new Error(`Kon documentgegevens niet ophalen (status ${metaRes.status})`);
       }

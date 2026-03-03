@@ -19,7 +19,7 @@ const Finalize = () => {
         const chatId = searchParams.get("chatId");
       if (chatId && !isNaN(parseInt(chatId))) {
         try {
-          const response = await fetch(`${BACKEND_URL}/api/conversations/${chatId}/`);
+          const response = await fetch(`${BACKEND_URL}/api/conversations/${chatId}/`, { credentials: 'include' });
           if (response.ok) {
             const data = await response.json();
             console.log("Data", data);
