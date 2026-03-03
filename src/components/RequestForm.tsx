@@ -341,6 +341,8 @@ const RequestForm = ({ finalize = false }: { finalize?: boolean }) => {
 
     if (!requestForm) return null;
     
+    const accessToken = searchParams.get("accessToken");
+
     const handleSubmit = async () => {
         if (finalize) {
             setSubmitting(true);
@@ -348,14 +350,14 @@ const RequestForm = ({ finalize = false }: { finalize?: boolean }) => {
                 const response = await fetch(`${BACKEND_URL}/api/finalize/`, {
                     method: 'POST',
                     headers: getCSRFHeaders({ 'Content-Type': 'application/json' }),
-                    body: JSON.stringify({ wooRequestId: searchParams.get("wooRequestId") }),
+                    body: JSON.stringify({ access_token: accessToken }),
                     credentials: 'include'
                 });
                 if (!response.ok) {
                     const errorData = await response.json().catch(() => ({ error: 'Failed to finalize request' }));
                     throw new Error(errorData.error || 'Failed to finalize request');
                 }
-                navigate(`/completed-request?wooRequestId=${searchParams.get("wooRequestId")}`);
+                navigate(`/completed-request?accessToken=${accessToken}`);
             } catch (error) {
                 console.error('Error finalizing request:', error);
                 alert(error instanceof Error ? error.message : 'Failed to finalize request');
@@ -363,21 +365,20 @@ const RequestForm = ({ finalize = false }: { finalize?: boolean }) => {
                 setSubmitting(false);
             }
         } else {
-            navigate(`/finalize?chatId=${searchParams.get("chatId")}&wooRequestId=${searchParams.get("wooRequestId")}`);
+            navigate(`/finalize?accessToken=${accessToken}`);
         }
     };
 
     const handleSendPdf = async (email: string) => {
-        const wooRequestId = searchParams.get("wooRequestId");
-        if (!wooRequestId) {
-            throw new Error('WOO verzoek ID niet gevonden');
+        if (!accessToken) {
+            throw new Error('Access token niet gevonden');
         }
 
         const response = await fetch(`${BACKEND_URL}/api/send-woo-request-pdf/`, {
             method: 'POST',
             headers: getCSRFHeaders({ 'Content-Type': 'application/json' }),
             body: JSON.stringify({ 
-                woo_request_id: wooRequestId,
+                access_token: accessToken,
                 email: email 
             }),
             credentials: 'include'
@@ -396,13 +397,12 @@ const RequestForm = ({ finalize = false }: { finalize?: boolean }) => {
     };
 
     const handleDownloadPdf = async () => {
-        const wooRequestId = searchParams.get("wooRequestId");
-        if (!wooRequestId) {
-            toast.error('WOO verzoek ID niet gevonden');
+        if (!accessToken) {
+            toast.error('Access token niet gevonden');
             return;
         }
         try {
-            const response = await fetch(`${BACKEND_URL}/api/woo-requests/${wooRequestId}/download-pdf/`, { credentials: 'include' });
+            const response = await fetch(`${BACKEND_URL}/api/woo-requests/${accessToken}/download-pdf/`, { credentials: 'include' });
             if (!response.ok) {
                 throw new Error('Fout bij downloaden van PDF');
             }
@@ -410,7 +410,7 @@ const RequestForm = ({ finalize = false }: { finalize?: boolean }) => {
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `WOO_rapport_${wooRequestId}.pdf`;
+            a.download = `WOO_rapport.pdf`;
             document.body.appendChild(a);
             a.click();
             a.remove();
@@ -610,7 +610,7 @@ const RequestForm = ({ finalize = false }: { finalize?: boolean }) => {
             <WooSubmitModal
                 isOpen={submitModal.isOpen}
                 onClose={() => setSubmitModal(prev => ({ ...prev, isOpen: false }))}
-                wooRequestId={searchParams.get("wooRequestId")}
+                accessToken={accessToken}
                 submissionType={submitModal.type}
             />
         </div>

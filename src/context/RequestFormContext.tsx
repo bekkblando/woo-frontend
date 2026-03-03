@@ -75,11 +75,11 @@ export function RequestFormProvider({ children }: Props) {
   }, []);
 
   const removeUploadedDocument = useCallback(async (s3Key: string) => {
-    const chatId = searchParams.get('chatId');
-    if (!chatId) return;
+    const accessToken = searchParams.get('accessToken');
+    if (!accessToken) return;
     try {
       const res = await fetch(
-        `${BACKEND_URL}/api/conversations/${chatId}/documents/delete/`,
+        `${BACKEND_URL}/api/conversations/${accessToken}/documents/delete/`,
         {
           method: 'DELETE',
           headers: getCSRFHeaders({ 'Content-Type': 'application/json' }),
@@ -97,9 +97,9 @@ export function RequestFormProvider({ children }: Props) {
 
   useEffect(() => {
     const saveUnsavedQuestions = async () => {
-        const wooRequestId = searchParams.get('wooRequestId');
+        const accessToken = searchParams.get('accessToken');
         
-        if (!wooRequestId) return;
+        if (!accessToken) return;
         
         // Find all unsaved questions
         const unsavedQuestions = questions.filter((q: Question) => !q.saved);
@@ -114,7 +114,7 @@ export function RequestFormProvider({ children }: Props) {
                     headers: getCSRFHeaders({ 'Content-Type': 'application/json' }),
                     body: JSON.stringify({ 
                         question: question.question, 
-                        woo_request: parseInt(wooRequestId) 
+                        access_token: accessToken 
                     }),
                     credentials: 'include'
                 });
@@ -153,5 +153,4 @@ export function RequestFormProvider({ children }: Props) {
 
   return <RequestFormContext.Provider value={value}>{children}</RequestFormContext.Provider>;
 }
-
 

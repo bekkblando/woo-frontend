@@ -52,7 +52,7 @@ function generateSecureRandomKey(length = 16) {
   
   
 
-const useChat = (conversationId: string | null, functionsCaller: (functionDefinition: {name: string, arguments: string}) => void, defaultMessage = "Hello, how can I help you?", initialMessages: Message[] | null = null): UseChatReturn => {
+const useChat = (accessToken: string | null, functionsCaller: (functionDefinition: {name: string, arguments: string}) => void, defaultMessage = "Hello, how can I help you?", initialMessages: Message[] | null = null): UseChatReturn => {
     // Initialize messages from initialMessages if provided, otherwise empty array
     const [messages, setMessages] = useState<Message[]>(initialMessages && initialMessages.length > 0 ? initialMessages : []);
     const [isComplete, setIsComplete] = useState<boolean>(false);
@@ -63,8 +63,8 @@ const useChat = (conversationId: string | null, functionsCaller: (functionDefini
     const [currentMessageKey, setCurrentMessageKey] = useState<string>(generateSecureRandomKey());
     const wsRef = useRef<ReconnectingWebSocket | null>(null);
     const [uploadedDocuments, setUploadedDocuments] = useState<UploadedDocument[]>([]);
-    // Track the effective conversation id (may be set before searchParams update)
-    const effectiveConversationIdRef = useRef<string | null>(conversationId);
+    // Track the effective access token (may be set before searchParams update)
+    const effectiveAccessTokenRef = useRef<string | null>(accessToken);
 
 
     // Update messages if initialMessages change (e.g., when conversation is loaded)
@@ -84,15 +84,19 @@ const useChat = (conversationId: string | null, functionsCaller: (functionDefini
 
         ws.onopen = () => {
             setLoading(false);
-            // Only set default message if no conversationId and no initialMessages
-            if ((!conversationId || isNaN(parseInt(conversationId))) && (!initialMessages || initialMessages.length === 0)) {
+            // Only set default message if no accessToken and no initialMessages
+            if (!accessToken && (!initialMessages || initialMessages.length === 0)) {
                 setMessages([{ role: 'assistant', content: defaultMessage }]);
             }
             wsRef.current = ws;
+            // Subscribe to conversation group if we already have an access token
+            if (accessToken) {
+                ws.send(JSON.stringify({ subscribe: accessToken }));
+            }
             console.log('WebSocket opened');
         };
 
-        console.log('Rendered Conversation ID', conversationId);
+        console.log('Rendered accessToken', accessToken);
         ws.onmessage = (event: MessageEvent) => {
             try {
                 const parsedChunk = JSON.parse(event.data);
@@ -138,10 +142,10 @@ const useChat = (conversationId: string | null, functionsCaller: (functionDefini
                         messageContent = "";
                         setAnimatedText("");
                     }
-                    // After first response completes, push chatId to URL once to avoid remounts during streaming
-                    if (parsedChunk.conversation_id && searchParams.get('chatId') !== parsedChunk.conversation_id || parsedChunk.woo_request_id !== searchParams.get('wooRequestId')) {
-                        console.log('Pushing chatId to URL', parsedChunk.conversation_id);
-                        setSearchParams({ chatId: parsedChunk.conversation_id, wooRequestId: parsedChunk.woo_request_id }, { replace: true } as any);
+                    // After first response completes, push accessToken to URL once to avoid remounts during streaming
+                    if (parsedChunk.access_token && searchParams.get('accessToken') !== parsedChunk.access_token) {
+                        console.log('Pushing accessToken to URL', parsedChunk.access_token);
+                        setSearchParams({ accessToken: parsedChunk.access_token }, { replace: true } as any);
                     }
                 }
             } catch (e) {
@@ -163,10 +167,10 @@ const useChat = (conversationId: string | null, functionsCaller: (functionDefini
         };
     }, []);
 
-    // Keep effectiveConversationIdRef in sync
+    // Keep effectiveAccessTokenRef in sync
     useEffect(() => {
-        effectiveConversationIdRef.current = conversationId;
-    }, [conversationId]);
+        effectiveAccessTokenRef.current = accessToken;
+    }, [accessToken]);
 
     const updateMessagesWhenCompleted = (messageContent:string) => {
         setIsComplete(true);
@@ -174,12 +178,12 @@ const useChat = (conversationId: string | null, functionsCaller: (functionDefini
     }
 
     const uploadFiles = useCallback(async (files: File[]): Promise<string | null> => {
-        let convId = effectiveConversationIdRef.current;
+        let token = effectiveAccessTokenRef.current;
         for (const file of files) {
             const formData = new FormData();
             formData.append('file', file);
-            if (convId) {
-                formData.append('conversation_id', convId);
+            if (token) {
+                formData.append('access_token', token);
             }
 
             const res = await fetch(`${BACKEND_URL}/api/conversations/upload/`, {
@@ -195,24 +199,28 @@ const useChat = (conversationId: string | null, functionsCaller: (functionDefini
             }
 
             const data = await res.json();
-            // Use the conversation_id returned from the upload (may be newly created)
-            if (data.conversation_id) {
-                convId = String(data.conversation_id);
-                effectiveConversationIdRef.current = convId;
+            // Use the access_token returned from the upload (may be newly created)
+            if (data.access_token) {
+                token = data.access_token;
+                effectiveAccessTokenRef.current = token;
+                // Subscribe the WebSocket to the conversation group
+                if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+                    wsRef.current.send(JSON.stringify({ subscribe: token }));
+                }
             }
             if (data.document) {
                 setUploadedDocuments(prev => [...prev, data.document as UploadedDocument]);
             }
         }
-        return convId;
+        return token;
     }, []);
 
     const removeDocument = useCallback(async (s3Key: string) => {
-        const convId = effectiveConversationIdRef.current;
-        if (!convId) return;
+        const token = effectiveAccessTokenRef.current;
+        if (!token) return;
 
         const res = await fetch(
-            `${BACKEND_URL}/api/conversations/${convId}/documents/delete/`,
+            `${BACKEND_URL}/api/conversations/${token}/documents/delete/`,
             {
                 method: 'DELETE',
                 headers: getCSRFHeaders({ 'Content-Type': 'application/json' }),
@@ -242,10 +250,10 @@ const useChat = (conversationId: string | null, functionsCaller: (functionDefini
             setMessages(prevMessages => [...prevMessages, {role: "user", content: message}]);
 
             // Upload files first if provided
-            let activeConvId = effectiveConversationIdRef.current || conversationId;
+            let activeToken = effectiveAccessTokenRef.current || accessToken;
             if (files && files.length > 0) {
-                const newConvId = await uploadFiles(files);
-                if (newConvId) activeConvId = newConvId;
+                const newToken = await uploadFiles(files);
+                if (newToken) activeToken = newToken;
             }
 
             // Send message via HTTP POST instead of WebSocket
@@ -253,7 +261,7 @@ const useChat = (conversationId: string | null, functionsCaller: (functionDefini
                 method: 'POST',
                 headers: getCSRFHeaders({ 'Content-Type': 'application/json' }),
                 body: JSON.stringify({
-                    conversation_id: activeConvId || null,
+                    access_token: activeToken || null,
                     message: message
                 }),
                 credentials: 'include'
@@ -265,17 +273,21 @@ const useChat = (conversationId: string | null, functionsCaller: (functionDefini
             }
 
             const data = await response.json();
-            // Update conversationId if we got a new one
-            if (data.conversation_id) {
-                effectiveConversationIdRef.current = String(data.conversation_id);
+            // Update accessToken if we got a new one
+            if (data.access_token) {
+                effectiveAccessTokenRef.current = data.access_token;
+                // Subscribe the WebSocket to the new conversation group
+                if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+                    wsRef.current.send(JSON.stringify({ subscribe: data.access_token }));
+                }
             }
-            if ((data.conversation_id && data.conversation_id !== conversationId) && (data.woo_request_id && data.woo_request_id !== searchParams.get('wooRequestId'))) {
-                setSearchParams({ chatId: data.conversation_id, wooRequestId: data.woo_request_id }, { replace: true } as any);
+            if (data.access_token && data.access_token !== accessToken) {
+                setSearchParams({ accessToken: data.access_token }, { replace: true } as any);
             }
         } catch (error) {
             console.error("Failed to send message", error);
         }
-    }, [conversationId, setSearchParams, uploadFiles]);
+    }, [accessToken, setSearchParams, uploadFiles]);
     
     return { messages, animatedText, isComplete, sendMessage, loading, currentMessageKey, uploadedDocuments, removeDocument, uploadDocuments };
 };

@@ -21,7 +21,7 @@ interface ChatProps {
 
 const Chat = ({ initialMessages }: ChatProps) => {
     const [searchParams] = useSearchParams();
-    const chatId = searchParams.get("chatId");
+    const accessToken = searchParams.get("accessToken");
     const [content, setContent] = useState<string>("");
     const [fileError, setFileError] = useState<string>("");
     const [uploading, setUploading] = useState<boolean>(false);
@@ -78,7 +78,7 @@ const Chat = ({ initialMessages }: ChatProps) => {
         uploadedDocuments: chatUploadedDocuments,
         removeDocument: chatRemoveDocument,
         uploadDocuments,
-    } = useChat(chatId, functionCaller, "Hello, how can I help you?", initialMessages);
+    } = useChat(accessToken, functionCaller, "Hello, how can I help you?", initialMessages);
 
     // Sync newly uploaded documents from useChat into the shared context
     // We track previous length to only push new additions (avoiding overwriting context removals)

@@ -16,14 +16,14 @@ interface UploadedDocument {
 interface WooSubmitModalProps {
   isOpen: boolean;
   onClose: () => void;
-  wooRequestId: string | null;
+  accessToken: string | null;
   submissionType: 'informatieverzoek' | 'woo_verzoek';
 }
 
 const WooSubmitModal: React.FC<WooSubmitModalProps> = ({
   isOpen,
   onClose,
-  wooRequestId,
+  accessToken,
   submissionType,
 }) => {
   const navigate = useNavigate();
@@ -82,11 +82,11 @@ const WooSubmitModal: React.FC<WooSubmitModalProps> = ({
       setIsPrefilling(false);
 
       // Fetch AI prefill
-      if (wooRequestId) {
-        fetchPrefill(wooRequestId);
+      if (accessToken) {
+        fetchPrefill(accessToken);
       }
     }
-  }, [isOpen, wooRequestId]);
+  }, [isOpen, accessToken]);
 
   // Escape key
   useEffect(() => {
@@ -103,10 +103,10 @@ const WooSubmitModal: React.FC<WooSubmitModalProps> = ({
     };
   }, [isOpen, isLoading, onClose]);
 
-  const fetchPrefill = useCallback(async (requestId: string) => {
+  const fetchPrefill = useCallback(async (token: string) => {
     setIsPrefilling(true);
     try {
-      const res = await fetch(`${BACKEND_URL}/api/woo-requests/${requestId}/prefill/`, { credentials: 'include' });
+      const res = await fetch(`${BACKEND_URL}/api/woo-requests/${token}/prefill/`, { credentials: 'include' });
       if (!res.ok) throw new Error('Prefill request failed');
       const data = await res.json();
 
@@ -175,7 +175,7 @@ const WooSubmitModal: React.FC<WooSubmitModalProps> = ({
   const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validate()) return;
-    if (!wooRequestId) return;
+    if (!accessToken) return;
 
     setIsLoading(true);
     try {
@@ -195,7 +195,7 @@ const WooSubmitModal: React.FC<WooSubmitModalProps> = ({
         submission_type: submissionType,
       };
 
-      const res = await fetch(`${BACKEND_URL}/api/woo-requests/${wooRequestId}/submit-form/`, {
+      const res = await fetch(`${BACKEND_URL}/api/woo-requests/${accessToken}/submit-form/`, {
         method: 'POST',
         headers: getCSRFHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify(payload),
@@ -213,7 +213,7 @@ const WooSubmitModal: React.FC<WooSubmitModalProps> = ({
       });
 
       onClose();
-      navigate(`/completed-request?wooRequestId=${wooRequestId}`);
+      navigate(`/completed-request?accessToken=${accessToken}`);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Er is een fout opgetreden', {
         position: 'top-right',
@@ -222,23 +222,17 @@ const WooSubmitModal: React.FC<WooSubmitModalProps> = ({
     } finally {
       setIsLoading(false);
     }
-  }, [firstName, middleName, lastName, organization, address, email, phone, subject, requestText, period, comments, consent, submissionType, wooRequestId, validate, onClose, navigate]);
+  }, [firstName, middleName, lastName, organization, address, email, phone, subject, requestText, period, comments, consent, submissionType, accessToken, validate, onClose, navigate]);
 
   const handleFileUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>, slotIndex: number) => {
     const file = e.target.files?.[0];
-    if (!file || !wooRequestId) return;
+    if (!file || !accessToken) return;
 
-    // We need the conversation_id. Fetch it from the woo request.
-    // For now, upload the file and add it to documents
     const formData = new FormData();
     formData.append('file', file);
+    formData.append('access_token', accessToken);
 
-    // We need the conversation_id - get it from wooRequestId endpoint
-    // The documents are already associated with the conversation, so we upload to the same conversation
     try {
-      // First we need to get the conversation_id from the woo request
-      // We can derive it from the prefill data, but let's just call the upload endpoint
-      // We'll use the conversation's upload endpoint
       const res = await fetch(`${BACKEND_URL}/api/conversations/upload/`, {
         method: 'POST',
         headers: getCSRFHeaders(),
@@ -268,7 +262,7 @@ const WooSubmitModal: React.FC<WooSubmitModalProps> = ({
         position: 'top-right',
       });
     }
-  }, [wooRequestId]);
+  }, [accessToken]);
 
   const removeDocument = useCallback((index: number) => {
     setDocuments(prev => prev.filter((_, i) => i !== index));

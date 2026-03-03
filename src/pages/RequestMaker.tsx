@@ -22,6 +22,7 @@ interface WooRequestData {
 }
 interface ConversationData {
   id: number;
+  access_token: string;
   title: string;
   created_at: string;
   messages: Message[];
@@ -32,7 +33,7 @@ interface ConversationData {
 const RequestMaker = () => {
     const requestForm = useContext(RequestFormContext);
     const [searchParams] = useSearchParams();
-    const chatId = searchParams.get("chatId");
+    const accessToken = searchParams.get("accessToken");
     const [initialMessages, setInitialMessages] = useState<Message[] | null>(null);
     const [loading, setLoading] = useState(false);
     const hasQuestions = Boolean(requestForm?.questions && requestForm.questions.length > 0);
@@ -71,10 +72,10 @@ const RequestMaker = () => {
 
   useEffect(() => {
     const fetchConversation = async () => {
-      if (chatId && !isNaN(parseInt(chatId))) {
+      if (accessToken) {
         setLoading(true);
         try {
-          const response = await fetch(`${BACKEND_URL}/api/conversations/${chatId}/`, { credentials: 'include' });
+          const response = await fetch(`${BACKEND_URL}/api/conversations/${accessToken}/`, { credentials: 'include' });
           if (response.ok) {
             const data: ConversationData = await response.json();
             console.log("Data", data);

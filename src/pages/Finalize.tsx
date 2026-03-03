@@ -16,10 +16,10 @@ const Finalize = () => {
   useEffect(() => {
     const fetchConversation = async () => {
         setLoading(true);
-        const chatId = searchParams.get("chatId");
-      if (chatId && !isNaN(parseInt(chatId))) {
+        const accessToken = searchParams.get("accessToken");
+      if (accessToken) {
         try {
-          const response = await fetch(`${BACKEND_URL}/api/conversations/${chatId}/`, { credentials: 'include' });
+          const response = await fetch(`${BACKEND_URL}/api/conversations/${accessToken}/`, { credentials: 'include' });
           if (response.ok) {
             const data = await response.json();
             console.log("Data", data);

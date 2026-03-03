@@ -50,7 +50,7 @@ const Admin = () => {
         pageNumber: 0,
         documentName: '',
     });
-    const chatId = searchParams.get("chatId");
+    const accessToken = searchParams.get("accessToken");
 
     const openPdfModal = useCallback(async (documentId: string, pageNumber: number) => {
         try {
@@ -78,10 +78,10 @@ const Admin = () => {
             
             try {
                 let response;
-                if (chatId && !isNaN(parseInt(chatId))) {
-                    response = await fetch(`${BACKEND_URL}/api/conversations/${chatId}/`, { credentials: 'include' });
+                if (accessToken) {
+                    response = await fetch(`${BACKEND_URL}/api/conversations/${accessToken}/`, { credentials: 'include' });
                 } else {
-                    console.error('No valid chatId provided');
+                    console.error('No valid accessToken provided');
                     setLoading(false);
                     return;
                 }
@@ -111,7 +111,7 @@ const Admin = () => {
         };
         
         fetchConversation();
-    }, [searchParams, chatId]);
+    }, [searchParams, accessToken]);
 
     // Helper function to get chunk URL by chunk_id (inspired by AnswerViewer)
     const getChunkUrl = (chunkId: string, answer: Answer): string | undefined => {

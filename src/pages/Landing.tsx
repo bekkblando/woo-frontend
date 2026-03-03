@@ -34,7 +34,7 @@ const Landing = () => {
     const [uploadedDocuments, setUploadedDocuments] = useState<UploadedDocument[]>([]);
     const [fileError, setFileError] = useState<string>("");
     const [uploading, setUploading] = useState<boolean>(false);
-    const conversationIdRef = useRef<string | null>(null);
+    const accessTokenRef = useRef<string | null>(null);
 
     useEffect(() => {
         if (textareaRef.current) {
@@ -75,8 +75,8 @@ const Landing = () => {
             for (const file of selected) {
                 const formData = new FormData();
                 formData.append('file', file);
-                if (conversationIdRef.current) {
-                    formData.append('conversation_id', conversationIdRef.current);
+                if (accessTokenRef.current) {
+                    formData.append('access_token', accessTokenRef.current);
                 }
 
                 const res = await fetch(`${BACKEND_URL}/api/conversations/upload/`, {
@@ -92,8 +92,8 @@ const Landing = () => {
                 }
 
                 const data = await res.json();
-                if (data.conversation_id) {
-                    conversationIdRef.current = String(data.conversation_id);
+                if (data.access_token) {
+                    accessTokenRef.current = data.access_token;
                 }
                 if (data.document) {
                     setUploadedDocuments(prev => [...prev, data.document as UploadedDocument]);
@@ -108,11 +108,11 @@ const Landing = () => {
     }, [uploadedDocuments.length]);
 
     const removeDocument = useCallback(async (s3Key: string) => {
-        const convId = conversationIdRef.current;
-        if (!convId) return;
+        const token = accessTokenRef.current;
+        if (!token) return;
 
         const res = await fetch(
-            `${BACKEND_URL}/api/conversations/${convId}/documents/delete/`,
+            `${BACKEND_URL}/api/conversations/${token}/documents/delete/`,
             {
                 method: 'DELETE',
                 headers: getCSRFHeaders({ 'Content-Type': 'application/json' }),
@@ -135,7 +135,7 @@ const Landing = () => {
                 method: 'POST',
                 headers: getCSRFHeaders({ 'Content-Type': 'application/json' }),
                 body: JSON.stringify({
-                    conversation_id: conversationIdRef.current || null,
+                    access_token: accessTokenRef.current || null,
                     message: content
                 }),
                 credentials: 'include'
@@ -147,8 +147,8 @@ const Landing = () => {
             }
 
             const data = await response.json();
-            // Update conversationId if we got a new one
-            navigate(`/request?chatId=${data.conversation_id}&wooRequestId=${data.woo_request_id}`);
+            // Navigate using the access_token
+            navigate(`/request?accessToken=${data.access_token}`);
         } catch (error) {
             console.error('Error submitting content:', error);
         } finally {
