@@ -1,8 +1,8 @@
-import { useContext, useEffect, useRef, useState } from "react";
+import { useContext, useEffect, useRef, useState, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
 import useChat from "../hooks/useChat";
 import TypewriterStreaming from "./ui/typewriter-streaming.tsx";
-import { IconMicrophone, IconPaperclip, IconSend2, IconX } from "@tabler/icons-react";
+import { IconPaperclip, IconSend2, IconX, IconLoader2 } from "@tabler/icons-react";
 import { RequestFormContext } from "../context/RequestFormContext.tsx";
 import ReactMarkdown from "react-markdown";
 
@@ -23,8 +23,8 @@ const Chat = ({ initialMessages }: ChatProps) => {
     const [searchParams] = useSearchParams();
     const chatId = searchParams.get("chatId");
     const [content, setContent] = useState<string>("");
-    const [pendingFiles, setPendingFiles] = useState<File[]>([]);
     const [fileError, setFileError] = useState<string>("");
+    const [uploading, setUploading] = useState<boolean>(false);
     const bottomOfChatContainer = useRef<HTMLDivElement | null>(null);
     const fileInputRef = useRef<HTMLInputElement | null>(null);
     const requestForm = useContext(RequestFormContext);
@@ -75,9 +75,39 @@ const Chat = ({ initialMessages }: ChatProps) => {
         animatedText,
         sendMessage,
         currentMessageKey,
-        uploadedDocuments,
-        removeDocument,
+        uploadedDocuments: chatUploadedDocuments,
+        removeDocument: chatRemoveDocument,
+        uploadDocuments,
     } = useChat(chatId, functionCaller, "Hello, how can I help you?", initialMessages);
+
+    // Sync newly uploaded documents from useChat into the shared context
+    // We track previous length to only push new additions (avoiding overwriting context removals)
+    const prevChatDocsLengthRef = useRef(chatUploadedDocuments.length);
+    useEffect(() => {
+        if (requestForm && chatUploadedDocuments.length > prevChatDocsLengthRef.current) {
+            // New documents were added in useChat — merge them into context
+            const newDocs = chatUploadedDocuments.slice(prevChatDocsLengthRef.current);
+            requestForm.setUploadedDocuments(prev => {
+                const existingKeys = new Set(prev.map(d => d.s3_key));
+                const toAdd = newDocs.filter(d => !existingKeys.has(d.s3_key));
+                return toAdd.length > 0 ? [...prev, ...toAdd] : prev;
+            });
+        }
+        prevChatDocsLengthRef.current = chatUploadedDocuments.length;
+    }, [chatUploadedDocuments]);
+
+    // Use context documents for display (shared with RequestForm)
+    const contextDocuments = requestForm?.uploadedDocuments ?? chatUploadedDocuments;
+
+    // Remove from both useChat internal state and context
+    const handleRemoveDocument = useCallback(async (s3Key: string) => {
+        // Remove from context (which also calls the backend DELETE)
+        if (requestForm) {
+            await requestForm.removeUploadedDocument(s3Key);
+        } else {
+            await chatRemoveDocument(s3Key);
+        }
+    }, [chatRemoveDocument, requestForm]);
 
     useEffect(() => {
         if (bottomOfChatContainer.current) {
@@ -85,16 +115,14 @@ const Chat = ({ initialMessages }: ChatProps) => {
         }
     }, [messages, animatedText]);
 
-    // --- File handling ---
-    const totalAttachedCount = pendingFiles.length + uploadedDocuments.length;
-
-    const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    // --- File handling - upload immediately on selection ---
+    const handleFileSelect = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
         setFileError("");
         const selected = Array.from(e.target.files || []);
         if (selected.length === 0) return;
 
         // Check total count
-        if (totalAttachedCount + selected.length > MAX_FILES) {
+        if (contextDocuments.length + selected.length > MAX_FILES) {
             setFileError(`U kunt maximaal ${MAX_FILES} documenten bijvoegen.`);
             if (fileInputRef.current) fileInputRef.current.value = "";
             return;
@@ -102,7 +130,7 @@ const Chat = ({ initialMessages }: ChatProps) => {
 
         // Validate each file
         for (const file of selected) {
-            const ext = file.name.rsplit ? "" : file.name.split(".").pop()?.toLowerCase() || "";
+            const ext = file.name.split(".").pop()?.toLowerCase() || "";
             if (!ALLOWED_EXTENSIONS.includes(ext)) {
                 setFileError(`Bestandstype '.${ext}' is niet toegestaan.`);
                 if (fileInputRef.current) fileInputRef.current.value = "";
@@ -115,20 +143,22 @@ const Chat = ({ initialMessages }: ChatProps) => {
             }
         }
 
-        setPendingFiles(prev => [...prev, ...selected]);
-        if (fileInputRef.current) fileInputRef.current.value = "";
-    };
-
-    const removePendingFile = (index: number) => {
-        setPendingFiles(prev => prev.filter((_, i) => i !== index));
-        setFileError("");
-    };
+        // Upload files immediately to the server
+        setUploading(true);
+        try {
+            await uploadDocuments(selected);
+        } catch (err) {
+            setFileError(err instanceof Error ? err.message : 'Bestand uploaden mislukt');
+        } finally {
+            setUploading(false);
+            if (fileInputRef.current) fileInputRef.current.value = "";
+        }
+    }, [contextDocuments.length, uploadDocuments]);
 
     const submitContent = () => {
-        if (!content.trim() && pendingFiles.length === 0) return;
-        sendMessage(content, pendingFiles.length > 0 ? pendingFiles : undefined);
+        if (!content.trim()) return;
+        sendMessage(content);
         setContent("");
-        setPendingFiles([]);
         setFileError("");
     };
 
@@ -170,33 +200,18 @@ const Chat = ({ initialMessages }: ChatProps) => {
             </div>
 
             {/* Attached files chips */}
-            {(uploadedDocuments.length > 0 || pendingFiles.length > 0) && (
+            {contextDocuments.length > 0 && (
                 <div className="px-3 pt-2 flex flex-wrap gap-2">
-                    {uploadedDocuments.map((doc) => (
+                    {contextDocuments.map((doc) => (
                         <span
                             key={doc.s3_key}
                             className="inline-flex items-center gap-1 bg-[#03689B]/10 text-[#154273] text-xs px-2 py-1 rounded-full"
                         >
                             {doc.filename}
                             <button
-                                onClick={() => removeDocument(doc.s3_key)}
+                                onClick={() => handleRemoveDocument(doc.s3_key)}
                                 className="hover:text-red-600 transition-colors"
                                 aria-label={`Verwijder ${doc.filename}`}
-                            >
-                                <IconX className="h-3 w-3" />
-                            </button>
-                        </span>
-                    ))}
-                    {pendingFiles.map((file, idx) => (
-                        <span
-                            key={`pending-${idx}`}
-                            className="inline-flex items-center gap-1 bg-[#F68153]/15 text-[#154273] text-xs px-2 py-1 rounded-full"
-                        >
-                            {file.name}
-                            <button
-                                onClick={() => removePendingFile(idx)}
-                                className="hover:text-red-600 transition-colors"
-                                aria-label={`Verwijder ${file.name}`}
                             >
                                 <IconX className="h-3 w-3" />
                             </button>
@@ -224,11 +239,15 @@ const Chat = ({ initialMessages }: ChatProps) => {
                 <button
                     className="px-1 py-1 text-[#154273] hover:text-[#03689B] transition-colors disabled:opacity-40"
                     onClick={() => fileInputRef.current?.click()}
-                    disabled={totalAttachedCount >= MAX_FILES}
+                    disabled={contextDocuments.length >= MAX_FILES || uploading}
                     aria-label="Bestand bijvoegen"
                     title="Bestand bijvoegen"
                 >
-                    <IconPaperclip className="h-5 w-5" />
+                    {uploading ? (
+                        <IconLoader2 className="h-5 w-5 animate-spin" />
+                    ) : (
+                        <IconPaperclip className="h-5 w-5" />
+                    )}
                 </button>
                 <input
                     className="flex-1 bg-transparent text-[#154273] text-lg outline-none placeholder:text-[#154273]/60 border-0 py-4"
@@ -240,9 +259,8 @@ const Chat = ({ initialMessages }: ChatProps) => {
                         if (e.key === "Enter") submitContent();
                     }}
                 />
-                <IconMicrophone className="inline-block" />
                 <button className="px-3 py-1" onClick={submitContent} aria-label="Send">
-                    <IconSend2 />
+                    <IconSend2 className="stroke-[#03689B]" />
                 </button>
             </div>
         </div>

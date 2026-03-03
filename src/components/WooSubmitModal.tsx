@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { IconX, IconSparkles, IconPaperclip, IconTrash, IconLoader2 } from '@tabler/icons-react';
+import { IconX, IconSparkles, IconPaperclip, IconTrash, IconLoader2, IconChevronDown } from '@tabler/icons-react';
 import { toast } from 'react-toastify';
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://127.0.0.1:8003";
@@ -73,6 +73,7 @@ const WooSubmitModal: React.FC<WooSubmitModalProps> = ({
       setPeriod('');
       setComments('');
       setConsent(false);
+      setShowPrivacyInfo(false);
       setErrors({});
       setAiPrefilled({});
       setDocuments([]);
@@ -394,7 +395,7 @@ const WooSubmitModal: React.FC<WooSubmitModalProps> = ({
               {isPrefilling && (
                 <span className="ml-2 text-sm font-normal text-gray-500">
                   <IconLoader2 className="inline-block w-4 h-4 animate-spin mr-1" />
-                  AI vult velden in...
+                  Automatisch vult velden in...
                 </span>
               )}
             </legend>
@@ -418,7 +419,7 @@ const WooSubmitModal: React.FC<WooSubmitModalProps> = ({
             </AiField>
 
             <AiField
-              label="Informatieverzoek"
+              label={submissionTypeLabel}
               required
               error={errors.requestText}
               aiPrefilled={aiPrefilled.request_text}
@@ -484,7 +485,7 @@ const WooSubmitModal: React.FC<WooSubmitModalProps> = ({
                     type="file"
                     onChange={(e) => handleFileUpload(e, idx)}
                     disabled={isLoading}
-                    className="text-sm text-gray-600 file:mr-3 file:py-1.5 file:px-3 file:border-0 file:text-sm file:font-medium file:bg-[#03689B] file:text-white file:rounded-md file:cursor-pointer hover:file:bg-[#03689B]/90"
+                    className="text-base text-gray-600 file:mr-3 file:py-2 file:px-4 file:border-0 file:text-base file:bg-[#03689B] file:text-white file:cursor-pointer file:display-inline-block"
                   />
                 )}
               </div>
@@ -509,41 +510,69 @@ const WooSubmitModal: React.FC<WooSubmitModalProps> = ({
 
           {/* ─── Privacy Information ─── */}
           <fieldset className="space-y-3 border border-gray-200 rounded-md p-4 bg-gray-50">
-            <legend className="text-base font-semibold text-[#154273] px-1">
+            <div className="text-base font-semibold text-[#154273]">
               Informatie over de verwerking van uw persoonsgegevens
-            </legend>
+            </div>
 
-            <div className={`text-sm text-gray-700 leading-relaxed ${showPrivacyInfo ? '' : 'line-clamp-3'}`}>
+            <div className="text-sm text-gray-700 leading-relaxed">
               <p>
                 Dit formulier kan worden gebruikt om een Woo-verzoek in te dienen bij het bestuursdepartement van het Ministerie van Justitie en Veiligheid.
                 De informatie die in dit formulier wordt verstrekt, wordt gebruikt om het Woo-verzoek te behandelen.
                 Zonder de informatie uit dit formulier kunnen wij uw verzoek niet behandelen.
-              </p>
-              {showPrivacyInfo && (
-                <>
-                  <p className="mt-2">
                     Uw gehele verzoek, inclusief persoonsgegevens, wordt op grond van de Archiefwet en de selectielijsten van het Ministerie van Justitie en Veiligheid permanent bewaard.
                     Twintig jaar na sluiting van het dossier wordt het overgebracht naar het Nationaal Archief; openbaarmaking van dergelijke dossiers vindt pas 75 jaar na sluiting van het dossier plaats.
-                  </p>
-                  <p className="mt-2">
                     Indien uw verzoek niet door het Ministerie van Justitie en Veiligheid kan worden beantwoord maar (waarschijnlijk) door een ander bestuursorgaan, verplicht de Wet open overheid het ministerie om uw Woo-verzoek door te sturen naar het juiste orgaan.
                     In dergelijke gevallen worden uw gehele verzoek, inclusief uw persoonsgegevens, gedeeld met het betreffende bestuursorgaan.
-                  </p>
-                </>
+              </p>
+            </div>
+
+            {/* Dropdown for additional privacy information */}
+            <div className="border-t border-gray-300 pt-3 mt-3">
+              <div className="flex items-center gap-2 justify-between pr-1">
+                <span className="text-sm text-[#154273]">Toon extra informatie over de verwerking van uw persoonsgegevens</span>
+                <button
+                  type="button"
+                  onClick={() => setShowPrivacyInfo(!showPrivacyInfo)}
+                  className="flex-shrink-0 w-6 h-6 rounded-full border border-[#F68153] flex items-center justify-center hover:bg-[#F68153]/10 transition-colors"
+                  aria-label="Toggle privacy details"
+                >
+                  <IconChevronDown 
+                    className={`h-3 w-3 text-[#F68153] transition-transform ${showPrivacyInfo ? 'rotate-180' : ''}`}
+                  />
+                </button>
+              </div>
+
+              {showPrivacyInfo && (
+                <div className="mt-2 p-3 bg-white border border-[#F68153] rounded text-sm text-[#154273] shadow-lg space-y-4 leading-relaxed">
+                  <div>
+                    <h4 className="font-semibold text-[#154273] mb-2">Waarom worden deze gegevens gevraagd?</h4>
+                    <p>
+                      Wij gebruiken de door u verstrekte gegevens bij de behandeling van uw Woo-verzoek, bijvoorbeeld om contact op te nemen om uw vraag te verhelderen. Als wij een besluit hebben genomen op uw verzoek, gebruiken wij uw contactgegevens om dit naar u toe te sturen. Zonder uw persoonsgegevens kunnen wij uw verzoek niet behandelen. Wij gebruiken uw gegevens, met uw toestemming, omdat wij anders niet in staat zijn uw Woo-verzoek te behandelen. In enkele gevallen, bijvoorbeeld bij verstrekking van documenten die de verzoeker betreft, kan u worden gevraagd om meer persoonsgegevens aan te leveren om uw identiteit te controleren. Mocht dit op uw verzoek van toepassing zijn, nemen wij contact met u op.
+                    </p>
+                  </div>
+
+                  <div>
+                    <h4 className="font-semibold text-[#154273] mb-2">Op welke manier worden uw gegevens verwerkt?</h4>
+                    <p>
+                      De gegevens uit dit Woo-verzoekformulier worden alleen gebruikt voor de behandeling van uw Woo-verzoek. Uw Woo-verzoek is in zijn geheel, inclusief persoonsgegevens, inzichtelijk door medewerkers van de directie Openbaarmaking en andere Woo-juristen van het ministerie van Justitie en Veiligheid. Tevens zijn uw persoonsgegevens inzichtelijk voor medewerkers uit het postproces, zij registeren het ontvangst van uw Woo-verzoek en verzenden (desgewenst) per post het besluit op uw Woo-verzoek. Uw gegevens worden niet gedeeld of opgeslagen buiten de Europese Economische Ruimte (EER). Bij doorzending delen wij uw persoonsgegevens met andere bestuursorganen die onder de Wet open overheid vallen. Mogelijk wijken de bewaartermijnen van deze instantie af van die van het ministerie van Justitie en Veiligheid, selectielijsten worden per organisatie opgesteld. Wij zullen u altijd informeren over een doorzending.
+                    </p>
+                  </div>
+
+                  <div>
+                    <h4 className="font-semibold text-[#154273] mb-2">Hoelang bewaren wij uw gegevens?</h4>
+                    <p>
+                      Werkzaamheden ten behoeve van Woo-verzoeken vallen onder de Archiefwet. Dit betekent dat uw Woo-verzoek (inclusief persoonsgegevens) en eventuele gerelateerde documenten worden bewaard conform de selectielijsten van het ministerie van Justitie en Veiligheid voor een periode van twintig jaar na sluiting van het dossier; daarna zal het dossier overgedragen worden aan het Nationaal Archief voor blijvende bewaring. Na overdracht aan het Nationaal Archief wordt het dossier, inclusief uw persoonsgegevens, door het Ministerie van Justitie en Veiligheid uit onze systemen verwijderd.
+                    </p>
+                  </div>
+                </div>
               )}
             </div>
-            <button
-              type="button"
-              onClick={() => setShowPrivacyInfo(!showPrivacyInfo)}
-              className="text-sm text-[#03689B] hover:underline"
-            >
-              {showPrivacyInfo ? 'Minder tonen' : 'Toon aanvullende informatie over de verwerking van uw persoonsgegevens'}
-            </button>
+
             <a
               href="/privacy"
               target="_blank"
               rel="noopener noreferrer"
-              className="block text-sm text-[#03689B] hover:underline"
+              className="block text-sm text-[#03689B] hover:underline mt-3"
             >
               Bekijk volledige privacyverklaring →
             </a>
@@ -575,14 +604,14 @@ const WooSubmitModal: React.FC<WooSubmitModalProps> = ({
               type="button"
               onClick={onClose}
               disabled={isLoading}
-              className="px-5 py-2.5 text-sm text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="text-base display-inline-block bg-gray-100 mt-2 self-start text-gray-700 px-4 py-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Annuleren
             </button>
             <button
               type="submit"
               disabled={isLoading}
-              className="px-5 py-2.5 text-sm text-white bg-[#03689B] rounded-md hover:bg-[#03689B]/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              className="text-base display-inline-block bg-[#03689B] mt-2 self-start text-white px-4 py-2 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
             >
               {isLoading ? (
                 <>
@@ -660,7 +689,7 @@ function AiField({
         {aiPrefilled && (
           <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium bg-purple-100 text-purple-700 rounded-full">
             <IconSparkles className="w-3 h-3" />
-            AI ingevuld
+            Automatisch ingevuld
             <button
               type="button"
               onClick={onClear}

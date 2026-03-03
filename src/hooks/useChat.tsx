@@ -32,6 +32,7 @@ interface UseChatReturn {
     currentMessageKey: string;
     uploadedDocuments: UploadedDocument[];
     removeDocument: (s3Key: string) => Promise<void>;
+    uploadDocuments: (files: File[]) => Promise<void>;
 }
 
 
@@ -224,6 +225,11 @@ const useChat = (conversationId: string | null, functionsCaller: (functionDefini
         }
     }, []);
 
+    // Upload documents immediately (without requiring a message)
+    const uploadDocuments = useCallback(async (files: File[]) => {
+        await uploadFiles(files);
+    }, [uploadFiles]);
+
     const sendMessage = useCallback(async (message: string, files?: File[]) => {
         try {
             setIsComplete(false);
@@ -268,7 +274,7 @@ const useChat = (conversationId: string | null, functionsCaller: (functionDefini
         }
     }, [conversationId, setSearchParams, uploadFiles]);
     
-    return { messages, animatedText, isComplete, sendMessage, loading, currentMessageKey, uploadedDocuments, removeDocument };
+    return { messages, animatedText, isComplete, sendMessage, loading, currentMessageKey, uploadedDocuments, removeDocument, uploadDocuments };
 };
 
 

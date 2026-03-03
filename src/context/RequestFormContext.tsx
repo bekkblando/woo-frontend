@@ -39,10 +39,20 @@ export type Question = {
   saved?: boolean;
 };
 
+export type UploadedDocument = {
+  s3_key: string;
+  filename: string;
+  content_type: string;
+  size?: number;
+};
+
 type RequestFormContextValue = {
   setQuestions: (value: Question[] | ((prev: Question[]) => Question[])) => void;
   questions: Question[];
   updateAnswer: (answer: Answer) => void;
+  uploadedDocuments: UploadedDocument[];
+  setUploadedDocuments: (value: UploadedDocument[] | ((prev: UploadedDocument[]) => UploadedDocument[])) => void;
+  removeUploadedDocument: (s3Key: string) => Promise<void>;
 };
 
 export const RequestFormContext = createContext<RequestFormContextValue | null>(null);
@@ -55,12 +65,33 @@ const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://127.0.0.1:8003";
 
 export function RequestFormProvider({ children }: Props) {
   const [questions, setQuestions] = useState<Question[]>([]);
+  const [uploadedDocuments, setUploadedDocuments] = useState<UploadedDocument[]>([]);
   const [searchParams] = useSearchParams();
 
   const updateAnswer = useCallback((answer: Answer) => {
     console.log("Updating answer", answer);
     setQuestions(questions => questions.map((q: Question) => q.id === answer.woo_question ? { ...q, answer: answer, saved: true, answer_loading: false } : q));
   }, []);
+
+  const removeUploadedDocument = useCallback(async (s3Key: string) => {
+    const chatId = searchParams.get('chatId');
+    if (!chatId) return;
+    try {
+      const res = await fetch(
+        `${BACKEND_URL}/api/conversations/${chatId}/documents/delete/`,
+        {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ s3_key: s3Key }),
+        }
+      );
+      if (res.ok || res.status === 204) {
+        setUploadedDocuments(prev => prev.filter(d => d.s3_key !== s3Key));
+      }
+    } catch (err) {
+      console.error('Failed to delete document:', err);
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     const saveUnsavedQuestions = async () => {
@@ -110,8 +141,11 @@ export function RequestFormProvider({ children }: Props) {
       questions,
       setQuestions,
       updateAnswer,
+      uploadedDocuments,
+      setUploadedDocuments,
+      removeUploadedDocument,
     }),
-    [questions, updateAnswer]
+    [questions, updateAnswer, uploadedDocuments, removeUploadedDocument]
   );
 
   return <RequestFormContext.Provider value={value}>{children}</RequestFormContext.Provider>;

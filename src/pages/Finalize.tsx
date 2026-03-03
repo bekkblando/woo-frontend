@@ -10,9 +10,8 @@ const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://127.0.0.1:8003";
 
 const Finalize = () => {
     const requestForm  = useContext(RequestFormContext);
-    const [searchParams, setSearchParams] = useSearchParams();
+    const [searchParams] = useSearchParams();
     const [loading, setLoading] = useState(false);
-
 
   useEffect(() => {
     const fetchConversation = async () => {
@@ -24,6 +23,9 @@ const Finalize = () => {
           if (response.ok) {
             const data = await response.json();
             console.log("Data", data);
+            if (data.documents && data.documents.length > 0 && requestForm) {
+              requestForm.setUploadedDocuments(data.documents);
+            }
             if (requestForm) {
                 requestForm.setQuestions(
                     data.woo_request.questions.map(q => ({ ...q, answer: q.answer ? q.answer : null, answer_loading: q.answer ? false : true, saved: true })));
@@ -60,8 +62,8 @@ const Finalize = () => {
                 </div>
             ) : (
             <div className="px-12">
-                <div className="text-2xl font-bold pb-4">MijnVerzoek</div>
-                <div className="text-sm pb-6">Hier maken we een verzoek voor je klaar. Je kunt dit versturen via dit platform of kopieëren en aanpassen. Dan kun je jouw verzoek versturen per mail.</div>
+                <div className="text-2xl font-bold py-4">MijnVerzoek</div>
+                <div className="text-sm pb-6 w-full md:w-1/2">Hier maken we een verzoek voor je klaar. Je kunt dit versturen via dit platform of kopieëren en aanpassen. Dan kun je jouw verzoek versturen per mail.</div>
                     <RequestForm finalize={true} />
                 </div>
             )}

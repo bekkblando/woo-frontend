@@ -25,6 +25,7 @@ interface ConversationData {
   title: string;
   created_at: string;
   messages: Message[];
+  documents: { s3_key: string; filename: string; content_type: string; size?: number }[];
   woo_request: WooRequestData;
 }
 
@@ -78,6 +79,9 @@ const RequestMaker = () => {
             const data: ConversationData = await response.json();
             console.log("Data", data);
             setInitialMessages(data.messages);
+            if (data.documents && data.documents.length > 0 && requestForm) {
+              requestForm.setUploadedDocuments(data.documents);
+            }
             if (requestForm) {
                 requestForm.setQuestions(
                     data.woo_request.questions.map(q => ({ 
@@ -214,8 +218,8 @@ const RequestMaker = () => {
         }}
       >
         <div className="w-full max-h-[100vh] overflow-y-auto lg:w-1/2">
-         <div className="text-2xl font-bold pb-4">MijnVraag</div>
-         <div className="text-sm pb-6">Bespreek hier uw vraag.</div>
+         <div className="text-2xl font-bold pb-4">JouwVraag</div>
+         <div className="text-sm pb-6">Stel hier je vragen om een verzoek te creëren.</div>
           {loading ? (
           <div className="h-full flex items-center justify-center">
             <div className="text-[#154273]">Loading conversation...</div>
@@ -226,8 +230,8 @@ const RequestMaker = () => {
         </div>
         {/* Desktop: Show RequestForm in sidebar */}
         <div className="hidden lg:block px-6 w-1/2">
-          <div className="text-2xl font-bold pb-4">MijnVerzoek</div>
-          <div className="text-sm pb-6">Hier maken we een verzoek voor je klaar. Je kunt dit versturen via dit platform of kopieëren en aanpassen. Dan kun je jouw verzoek versturen per mail.</div>
+          <div className="text-2xl font-bold pb-4">JouwVerzoek</div>
+          <div className="text-sm pb-6">Hier maken we vervolgens het verzoek voor je klaar. Je kunt dit downloaden als bestand, naar jezelf mailen, of indienen bij het Ministerie van Justitie en Veiligheid. De knoppen hiervoor staan onder dit verzoek.</div>
             <RequestForm />
         </div>
         {/* Mobile/Tablet: Button to open bottom sheet - only show if questions exist */}
@@ -249,7 +253,7 @@ const RequestMaker = () => {
           <Sheet.Header />
           <Sheet.Content>
             <div className="px-4 md:px-6 pb-6">
-              <div className="text-2xl font-bold pb-4">MijnVerzoek</div>
+              <div className="text-2xl font-bold pb-4">JouwVerzoek</div>
               <div className="text-sm pb-6">Hier maken we een verzoek voor je klaar. Je kunt dit versturen via dit platform of kopieëren en aanpassen. Dan kun je jouw verzoek versturen per mail.</div>
               <RequestForm />
             </div>
