@@ -1,4 +1,5 @@
 import Navbar from "../components/Navbar";
+import Footer from "../components/Footer";
 import StatusBar from "../components/ui/status-bar";
 import SEO from "../components/SEO";
 
@@ -19,6 +20,7 @@ const Status = () => {
                 <h1 className="text-2xl font-bold text-[#154273]">Status</h1>
                 <StatusBar size="lg" currentStep={2} />
             </div>
+            <Footer />
         </div>
     );
 };

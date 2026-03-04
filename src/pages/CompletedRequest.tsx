@@ -1,9 +1,10 @@
 import Navbar from "../components/Navbar";
+import Footer from "../components/Footer";
 import SEO from "../components/SEO";
 
 const CompletedRequest = () => {
     return (
-        <div>
+        <div className="min-h-screen flex flex-col">
             <SEO
                 title="MijnVerzoek - Verzoek ingediend"
                 description="Uw verzoek is ingediend. Volg de status van uw informatieverzoek of WOO-verzoek om te zien hoe het ervoor staat."
@@ -19,6 +20,7 @@ const CompletedRequest = () => {
                     <h1 className="text-3xl font-bold text-[#154273] mb-4">Uw WOO verzoek is ingediend</h1>
                 </div>
             </div>
+            <Footer />
         </div>
     );
 };

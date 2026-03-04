@@ -3,6 +3,7 @@ import { IconSend2, IconLoader2, IconPaperclip, IconX } from "@tabler/icons-reac
 import { useNavigate } from "react-router-dom";
 import SEO from "../components/SEO";
 import Navbar from "../components/Navbar";
+import Footer from "../components/Footer";
 import { getCSRFHeaders } from "../hooks/authentication_helper";
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://127.0.0.1:8003";
@@ -157,7 +158,7 @@ const Landing = () => {
     }
 
     return (
-        <div>
+        <div className="min-h-screen flex flex-col">
             <SEO
                 title="VraagMijnOverheid - Stel uw vraag aan de overheid"
                 description="Wil u iets weten van de overheid? Stel uw vraag hier op een eenvoudige en respectvolle manier. Wij helpen u vanaf de eerste vraag met het vinden van informatie en het indienen van WOO-verzoeken. Transparantie en vertrouwen tussen burger en overheid."
@@ -169,7 +170,6 @@ const Landing = () => {
             />
             <div className="w-full flex flex-col justify-center">
             <Navbar />
-            <div className="bg-[#EFF7FC] w-full h-4"></div>
             <div>
             <div>
                 
@@ -277,6 +277,7 @@ const Landing = () => {
             </div>
             </div>
         </div>
+        <Footer />
     </div>
     )
 }

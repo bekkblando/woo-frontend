@@ -1,4 +1,5 @@
 import Navbar from "../components/Navbar";
+import Footer from "../components/Footer";
 import { useState, useEffect, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
 import { IconLoader2 } from "@tabler/icons-react";
@@ -188,7 +189,7 @@ const Admin = () => {
 
     if (loading) {
         return (
-            <div className="min-h-screen bg-white">
+            <div className="min-h-screen flex flex-col bg-white">
                 <Navbar />
                 <div className="max-w-6xl mx-auto px-6 py-8 flex items-center justify-center">
                     <div className="flex items-center gap-2 text-[#154273]">
@@ -201,7 +202,7 @@ const Admin = () => {
     }
 
     return (
-        <div className="min-h-screen bg-white">
+        <div className="min-h-screen flex flex-col bg-white">
             <SEO
                 title="BurgerVerzoek - Admin Portaal"
                 description="Admin portaal voor het beheren van burgerverzoeken. Goedgekeurde vragen en antwoorden, zoeken in niet-publieke informatie, en verzoeken versturen naar burgers of doorzetten naar andere overheidsorganen."
@@ -476,6 +477,7 @@ const Admin = () => {
                 pageNumber={pdfModal.pageNumber}
                 documentName={pdfModal.documentName}
             />
+            <Footer />
         </div>
     );
 };

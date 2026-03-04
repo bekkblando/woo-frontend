@@ -4,6 +4,7 @@ import { useSearchParams } from 'react-router-dom'
 import { useContext, useEffect, useState, useRef } from 'react'
 import { RequestFormContext, type Answer } from '../context/RequestFormContext';
 import Navbar from '../components/Navbar';
+import Footer from '../components/Footer';
 import { Sheet } from 'react-modal-sheet';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -189,7 +190,7 @@ const RequestMaker = () => {
 
 
     return (
-      <div className="w-full flex flex-col h-full justify-center">
+      <div className="w-full min-h-screen flex flex-col justify-center">
       <SEO
         title="MijnVraag - Stel uw vraag en maak uw WOO verzoek"
         description="Bespreek hier uw vraag met ons systeem. Wij helpen u met het ontleden van uw vraag in subvragen, tonen al publieke documenten, en helpen u bij het maken van een WOO-verzoek op een respectvolle manier."
@@ -282,6 +283,7 @@ const RequestMaker = () => {
         pauseOnHover
         theme="light"
       />
+      <Footer />
     </div>
     );
 };

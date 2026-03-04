@@ -1,4 +1,5 @@
 import Navbar from "../components/Navbar";
+import Footer from "../components/Footer";
 import SEO from "../components/SEO";
 import { useNavigate } from "react-router-dom";
 import { IconArrowLeft } from "@tabler/icons-react";
@@ -7,7 +8,7 @@ const Privacy = () => {
     const navigate = useNavigate();
 
     return (
-        <div className="w-full flex flex-col">
+        <div className="w-full min-h-screen flex flex-col">
             <SEO
                 title="MijnVerzoek - Privacy & Persoonsgegevens"
                 description="Informatie over de verwerking van uw persoonsgegevens bij het indienen van een Woo-verzoek bij het Ministerie van Justitie en Veiligheid."
@@ -62,6 +63,7 @@ const Privacy = () => {
                     Voor vragen over de verwerking van uw persoonsgegevens kunt u contact opnemen met het Ministerie van Justitie en Veiligheid.
                 </p>
             </div>
+            <Footer />
         </div>
     );
 };

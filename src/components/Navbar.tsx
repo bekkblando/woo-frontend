@@ -12,7 +12,7 @@ const Navbar = () => {
           <img src="/government-logo.png" alt="Woo Logo" className="h-12" />
           <div className="w-[90px] h-1"></div>
         </div>
-      <div className="bg-[#EFF7FC] w-full h-4"></div>
+      <div className="bg-[#EFF7FC] w-full h-8"></div>
       </div>
 
     );
