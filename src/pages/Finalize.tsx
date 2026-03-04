@@ -47,10 +47,10 @@ const Finalize = () => {
     return (
         <div className="w-full flex flex-col justify-center">
             <SEO
-                title="MijnVerzoek - Finaliseer uw WOO verzoek"
+                title="MijnVerzoek - Finaliseer uw Woo verzoek"
                 description="Hier maken we een verzoek voor u klaar. U kunt dit versturen via dit platform of kopiëren en aanpassen. Dan kunt u uw verzoek versturen per mail. Een informatieverzoek of juridisch bindend WOO-verzoek."
                 keywords="WOO verzoek finaliseren, informatieverzoek versturen, WOO verzoek afronden, MijnVerzoek"
-                ogTitle="MijnVerzoek - Finaliseer uw WOO verzoek"
+                ogTitle="MijnVerzoek - Finaliseer uw Woo verzoek"
                 ogDescription="Hier maken we een verzoek voor u klaar. U kunt dit versturen via dit platform of kopiëren en aanpassen."
                 ogUrl="/finalize"
                 canonicalUrl="/finalize"
@@ -62,8 +62,13 @@ const Finalize = () => {
                 </div>
             ) : (
             <div className="px-12">
-                <div className="text-2xl font-bold py-4">MijnVerzoek</div>
-                <div className="text-sm pb-6 w-full md:w-1/2">Hier maken we een verzoek voor je klaar. Je kunt dit versturen via dit platform of kopieëren en aanpassen. Dan kun je jouw verzoek versturen per mail.</div>
+                <div className="text-2xl font-bold pt-4 pb-2">Mijn verzoek</div>
+                <div className="text-sm pb-6 w-full md:w-1/2">
+                  In dit venster zie je nu jouw verzoek. Wil je toch nog aanpassingen doen? Als je terug gaat naar de vorige pagina, kun je het verzoek verder bewerken. 
+                  Ben je tevreden over het verzoek? Dan kun je hier het verzoek downloaden als bestand, of officieel indienen bij het Ministerie van Justitie en Veiligheid. 
+                  <p className="pt-2">De knoppen staan rechts naast dit venster.</p>
+
+                </div>
                     <RequestForm finalize={true} />
                 </div>
             )}

@@ -555,16 +555,16 @@ const RequestForm = ({ finalize = false }: { finalize?: boolean }) => {
                 </div> : ( */}
                 <div className="w-full md:w-1/2 flex flex-col gap-6 px-6">
                 <div className="text-sm w-full md:w-8/10 pt-12 flex flex-col gap-2 justify-between text-left items-center">
-                    <div className="text-2xl font-bold self-start">Download WOO rapport</div>
-                    <div className="self-start">Download het volledige WOO rapport als PDF, inclusief alle bronverwijzingen en bijlagen.</div>
+                    <div className="text-2xl font-bold self-start">Download jouw verzoek</div>
+                    <div className="self-start">Download hier het verzoek als pdf-bestand, inclusief bronverwijzingen en bijlagen. Je kunt nu zelf besluiten hoe je verder wilt gaan.</div>
                     <button onClick={handleDownloadPdf} disabled={submitting} className="text-base display-inline-block bg-[#154273] mt-2 self-start text-white px-4 py-2">
-                    Download rapport
+                    Download verzoek
                     </button>
                 </div>
 
                 <div className="text-sm mt-10 w-full md:w-8/10 flex flex-col gap-2 justify-between text-left items-center">
-                    <div className="text-2xl font-bold self-start">Informatie verzoek</div>
-                    <div>Kies deze optie als je aanvullende informatie zoekt omdat je vraag nog niet volledig beantwoord kon worden met de openbaar beschikbare gegevens. Deze route biedt ruimte om, wanneer dat passend is, extra of meer contextuele informatie te verstrekken.</div>
+                    <div className="text-2xl font-bold self-start">Dien een informatieverzoek in</div>
+                    <div>Hier kun je het Ministerie van Justitie en Veiligheid vragen om meer informatie. Dat kan als je vraag nog niet helemaal is beantwoord met de informatie die openbaar beschikbaar is. Via deze weg kun je extra uitleg geven over je verzoek. Ook kan een medewerker van het Ministerie van Justitie en Veiligheid contact met je opnemen om je verzoek zo goed mogelijk te behandelen.</div>
                     <button onClick={() => setSubmitModal({ isOpen: true, type: 'informatieverzoek' })} disabled={submitting} className="text-base display-inline-block bg-[#F68153] mt-2 self-start text-white px-4 py-2">
                     Stuur een informatieverzoek
                     </button>
@@ -572,10 +572,14 @@ const RequestForm = ({ finalize = false }: { finalize?: boolean }) => {
     
     
                 <div className="text-sm mt-10 w-full md:w-8/10 flex flex-col gap-2 justify-between text-left items-center">
-                        <div className="text-2xl font-bold self-start">WOO verzoek</div>
-                        <div>Kies deze optie als je een formele informatieaanvraag wilt indienen waarop de overheid binnen vier tot zes weken moet reageren. Je verzoek wordt behandeld volgens de Wet open overheid (Woo), en waar mogelijk ontvang je relevante documenten en toelichtingen om je vraag volledig te beantwoorden.</div>
+                        <div className="text-2xl font-bold self-start">Dien een Woo verzoek in</div>
+                        <div>
+                        Kies deze optie als je een officiële aanvraag voor informatie wilt doen. Het Ministerie van Justitie en Veiligheid moet dan binnen vier tot zes weken reageren. Je verzoek wordt behandeld volgens de Wet open overheid (Woo). 
+                        <p>Waar mogelijk krijg je de documenten en uitleg die nodig zijn om je vraag goed te beantwoorden. Dit kan betekenen dat een ambtenaar van het ministerie contact met je opneemt om je verzoek zo goed mogelijk te behandelen. </p>
+
+                        </div>
                     <button onClick={() => setSubmitModal({ isOpen: true, type: 'woo_verzoek' })} disabled={submitting} className="text-base display-inline-block bg-[#03689B] mt-2 self-start text-white px-4 py-2">
-                    Stuur een WOO verzoek
+                    Stuur een Woo verzoek
                     </button>
                 </div>
                 </div>

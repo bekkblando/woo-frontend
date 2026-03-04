@@ -219,8 +219,13 @@ const RequestMaker = () => {
         }}
       >
         <div className="w-full max-h-[100vh] overflow-y-auto lg:w-1/2">
-         <div className="text-2xl font-bold pb-4">JouwVraag</div>
-         <div className="text-sm pb-6">Stel hier je vragen om een verzoek te creëren.</div>
+         <div className="text-2xl font-bold pb-4">Jouw vraag</div>
+         <div className="text-sm pb-6">
+          In dit venster praten we met je om je vragen duidelijker te maken. We stellen vragen over bijvoorbeeld welk soort documenten je zoekt en in welke periode je zoekt. Daarnaast stellen we een aantal controle­vragen.
+          
+          <p>Door onze vragen te beantwoorden, kun je in het venster rechts zien wat er gebeurt. </p>
+
+         </div>
           {loading ? (
           <div className="h-full flex items-center justify-center">
             <div className="text-[#154273]">Loading conversation...</div>
@@ -231,8 +236,11 @@ const RequestMaker = () => {
         </div>
         {/* Desktop: Show RequestForm in sidebar */}
         <div className="hidden lg:block px-6 w-1/2">
-          <div className="text-2xl font-bold pb-4">JouwVerzoek</div>
-          <div className="text-sm pb-6">Hier maken we vervolgens het verzoek voor je klaar. Je kunt dit downloaden als bestand, naar jezelf mailen, of indienen bij het Ministerie van Justitie en Veiligheid. De knoppen hiervoor staan onder dit verzoek.</div>
+          <div className="text-2xl font-bold pb-4">Jouw verzoek</div>
+          <div className="text-sm pb-6">
+            In dit venster maken we het verzoek voor je klaar. Je kunt het downloaden als bestand, naar jezelf mailen, of officieel indienen bij het Ministerie van Justitie en Veiligheid.
+            <p>De knoppen hiervoor staan onder het verzoek.</p>
+          </div>
             <RequestForm />
         </div>
         {/* Mobile/Tablet: Button to open bottom sheet - only show if questions exist */}

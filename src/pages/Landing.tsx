@@ -179,7 +179,12 @@ const Landing = () => {
             <div className="w-full md:w-1/3 self-center px-4 md:px-0">
             <div className="text-2xl font-bold pt-22 pb-4">VraagMijnOverheid</div>
             <div className="pb-6 px-2">
-                <p>Wil je documenten ontvangen en inzien van het Ministerie van Justitie en Veiligheid? Dan kun je dat hier vragen. Beschrijf van welke beslissing van het ministerie je documenten wilt ontvangen, passend binnen de Wet Open Overheid. We gaan je vervolgens zo goed mogelijk helpen om die informatie bij je te krijgen. Zo houden we de overheid transparant en betrouwbaar. </p>
+                <div>
+                    <p className="pb-2">Welkom bij VraagMijnOverheid van het Ministerie van Justitie.</p> 
+
+                    Op dit platform helpen we je om Wet Open Overheid (Woo) verzoeken op te stellen, zodat wij precies weten wat je zoekt en je dus het snelst kunnen helpen. 
+                    Nadat je een eerste vraag hebt gesteld, kunnen we je helpen. Er opent zich dan een nieuw venster, waarin we laten zien hoe we je eerste vraag begrepen hebben. 
+                </div>
             </div>
             <div className="px-0 md:px-2">
             <div className="rounded-lg flex flex-col bg-[#EFF7FC] border-2 border-[#03689B]">
