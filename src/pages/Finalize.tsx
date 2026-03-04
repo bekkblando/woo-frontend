@@ -46,7 +46,7 @@ const Finalize = () => {
 
 
     return (
-        <div className="w-full min-h-screen flex flex-col justify-center">
+        <div className="w-full min-h-screen flex flex-col">
             <SEO
                 title="MijnVerzoek - Finaliseer uw Woo verzoek"
                 description="Hier maken we een verzoek voor u klaar. U kunt dit versturen via dit platform of kopiëren en aanpassen. Dan kunt u uw verzoek versturen per mail. Een informatieverzoek of juridisch bindend WOO-verzoek."
@@ -62,7 +62,7 @@ const Finalize = () => {
                     <IconLoader2 className="animate-spin h-8 w-8" />
                 </div>
             ) : (
-            <div className="px-12">
+            <div className="px-12 flex-1 pb-12">
                 <div className="text-2xl font-bold pt-4 pb-2">Mijn verzoek</div>
                 <div className="text-sm pb-6 w-full md:w-1/2">
                   In dit venster zie je nu jouw verzoek. Wil je toch nog aanpassingen doen? Als je terug gaat naar de vorige pagina, kun je het verzoek verder bewerken. 

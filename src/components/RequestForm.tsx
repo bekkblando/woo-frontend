@@ -423,7 +423,7 @@ const RequestForm = ({ finalize = false }: { finalize?: boolean }) => {
 
     console.log("Request form questions", requestForm.questions);
     return (
-        <div className={`${finalize ? 'flex flex-col md:flex-row gap-6' : 'flex flex-col'}`}>
+        <div className={`${finalize ? 'flex flex-col md:flex-row md:items-start gap-6' : 'flex flex-col'}`}>
             <div className={`${finalize ? 'w-full md:w-1/2' : 'max-h-[70vh]'} flex flex-col`}>
                 <div className={`p-6 md:p-8 flex-1 overflow-y-auto bg-[#F5F5F5] border-2 border-[#738DA7] mb-6`}>
                     <div className="text-sm py-2">
@@ -554,8 +554,8 @@ const RequestForm = ({ finalize = false }: { finalize?: boolean }) => {
                     </button>
                 </div> : ( */}
                 <div className="w-full md:w-1/2 flex flex-col gap-6 px-6">
-                <div className="text-sm w-full md:w-8/10 pt-12 flex flex-col gap-2 justify-between text-left items-center">
-                    <div className="text-2xl font-bold self-start">Download jouw verzoek</div>
+                <div className="text-sm w-full md:w-8/10 flex flex-col gap-2 justify-between text-left items-center">
+                    <div className="text-2xl font-bold self-start leading-none">Download jouw verzoek</div>
                     <div className="self-start">Download hier het verzoek als pdf-bestand, inclusief bronverwijzingen en bijlagen. Je kunt nu zelf besluiten hoe je verder wilt gaan.</div>
                     <button onClick={handleDownloadPdf} disabled={submitting} className="text-base display-inline-block bg-[#154273] mt-2 self-start text-white px-4 py-2">
                     Download verzoek

@@ -1,6 +1,6 @@
 const Footer = () => {
     return (
-        <footer className="w-full bg-[#f1f1f1] border-t border-gray-300 mt-auto min-h-24">
+        <footer className="w-full bg-[#f1f1f1] border-t border-gray-300 mt-auto pt-12 min-h-24">
             <div className="w-full px-6 md:px-12 py-4 flex flex-col md:flex-row items-center md:items-start justify-between gap-6 md:gap-4" style={{ minHeight: '3rem' }}>
                 {/* Left: Logo + Text */}
                 <div className="flex-1 flex items-center gap-4">
