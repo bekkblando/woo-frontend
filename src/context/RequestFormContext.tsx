@@ -32,12 +32,18 @@ export type Answer = {
     };
   }>;
 }
+export type QuestionProgress = {
+  stage: string;
+  detail?: string;
+};
+
 export type Question = {
   id: number;
   question: string;
   answer?: Answer;
   answer_loading?: boolean;
   saved?: boolean;
+  progress?: QuestionProgress;
 };
 
 export type UploadedDocument = {
@@ -51,6 +57,7 @@ type RequestFormContextValue = {
   setQuestions: (value: Question[] | ((prev: Question[]) => Question[])) => void;
   questions: Question[];
   updateAnswer: (answer: Answer) => void;
+  updateQuestionProgress: (wooQuestionId: number, progress: QuestionProgress) => void;
   uploadedDocuments: UploadedDocument[];
   setUploadedDocuments: (value: UploadedDocument[] | ((prev: UploadedDocument[]) => UploadedDocument[])) => void;
   removeUploadedDocument: (s3Key: string) => Promise<void>;
@@ -71,7 +78,13 @@ export function RequestFormProvider({ children }: Props) {
 
   const updateAnswer = useCallback((answer: Answer) => {
     console.log("Updating answer", answer);
-    setQuestions(questions => questions.map((q: Question) => q.id === answer.woo_question ? { ...q, answer: answer, saved: true, answer_loading: false } : q));
+    setQuestions(questions => questions.map((q: Question) => q.id === answer.woo_question ? { ...q, answer: answer, saved: true, answer_loading: false, progress: undefined } : q));
+  }, []);
+
+  const updateQuestionProgress = useCallback((wooQuestionId: number, progress: QuestionProgress) => {
+    setQuestions(questions => questions.map((q: Question) =>
+      q.id === wooQuestionId ? { ...q, progress } : q
+    ));
   }, []);
 
   const removeUploadedDocument = useCallback(async (s3Key: string) => {
@@ -144,11 +157,12 @@ export function RequestFormProvider({ children }: Props) {
       questions,
       setQuestions,
       updateAnswer,
+      updateQuestionProgress,
       uploadedDocuments,
       setUploadedDocuments,
       removeUploadedDocument,
     }),
-    [questions, updateAnswer, uploadedDocuments, removeUploadedDocument]
+    [questions, updateAnswer, updateQuestionProgress, uploadedDocuments, removeUploadedDocument]
   );
 
   return <RequestFormContext.Provider value={value}>{children}</RequestFormContext.Provider>;

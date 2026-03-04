@@ -43,6 +43,16 @@ const Chat = ({ initialMessages }: ChatProps) => {
             });
             return;
         }
+        if (_definition.name === "woo_question_progress") {
+            const data = _definition.arguments;
+            if (data.woo_question_id && data.stage) {
+                requestForm?.updateQuestionProgress(data.woo_question_id, {
+                    stage: data.stage,
+                    detail: data.detail,
+                });
+            }
+            return;
+        }
         if (_definition.name === "questions_added") {
             const data = _definition.arguments;
             if (!data.questions || !Array.isArray(data.questions) || !requestForm) return;

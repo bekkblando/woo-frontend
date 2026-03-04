@@ -1,16 +1,22 @@
-import { useState, useEffect, useRef } from 'react';
 import { cn } from '../../utils/cn';
+import type { QuestionProgress } from '../../context/RequestFormContext';
 
 interface StatusBarProps {
     size?: 'sm' | 'md' | 'lg';
     className?: string;
     currentStep?: number; // For large version, specify which step to show (0-based index)
+    progress?: QuestionProgress; // Real-time progress from backend (sm/md only)
 }
 
-const STATUS_STEPS = [
-    'Zoeken naar relevante informatie',
-    'Extracteren van relevante informatie',
-    'Formuleren van reactie'
+// Pipeline stage keys in order, mapped to display labels
+const PIPELINE_STAGES: { key: string; label: string }[] = [
+    { key: 'generating_queries', label: 'Zoekquery\u2019s genereren' },
+    { key: 'searching', label: 'Zoeken naar informatie' },
+    { key: 'evaluating', label: 'Resultaten evalueren' },
+    { key: 'filtering', label: 'Relevante bronnen selecteren' },
+    { key: 'extracting', label: 'Citaten extraheren' },
+    { key: 'synthesizing', label: 'Antwoord formuleren' },
+    { key: 'formatting', label: 'Citaten opmaken' },
 ];
 
 // Additional steps for the status page (large version)
@@ -23,58 +29,23 @@ const STATUS_PAGE_STEPS = [
     'Reactie verzonden'
 ];
 
-const StatusBar = ({ size = 'md', className, currentStep: fixedStep }: StatusBarProps) => {
-    const [currentStep, setCurrentStep] = useState(0);
-    const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-    
-    // Make the first step (search) longer on average: 3-5 seconds
-    // Other steps: 2-3 seconds
-    const stepTimingsRef = useRef<number[]>(
-        STATUS_STEPS.map((_, index) => {
-            if (index === 0) {
-                // First step (search) - longer: 3000-5000ms
-                return Math.random() * 2000 + 3000;
-            }
-            // Other steps - normal: 2000-3000ms
-            return Math.random() * 1000 + 2000;
-        })
-    );
+/**
+ * Resolve the current step index and display text from a QuestionProgress object.
+ * Falls back to step 0 with a generic label when no progress has been received yet.
+ */
+function resolveProgress(progress?: QuestionProgress): { stepIndex: number; label: string; detail?: string } {
+    if (!progress) {
+        return { stepIndex: 0, label: 'Verwerken\u2026' };
+    }
+    const idx = PIPELINE_STAGES.findIndex(s => s.key === progress.stage);
+    if (idx === -1) {
+        return { stepIndex: 0, label: progress.stage, detail: progress.detail };
+    }
+    return { stepIndex: idx, label: PIPELINE_STAGES[idx].label, detail: progress.detail };
+}
 
-    // Large version is static - no animation
-    const isStatic = size === 'lg';
-    
-    // For large version, use fixed step if provided, otherwise show all completed
-    const statusPageCurrentStep = fixedStep !== undefined ? fixedStep : STATUS_PAGE_STEPS.length - 1;
-
-    useEffect(() => {
-        // Don't animate if static (large version)
-        if (isStatic) {
-            return;
-        }
-
-        const advanceStep = () => {
-            setCurrentStep((prev) => {
-                const nextStep = prev + 1;
-                // Stop at the last step (never reach the 4th dot)
-                if (nextStep >= STATUS_STEPS.length) {
-                    return prev; // Stay at last step
-                }
-                // Schedule next step
-                timeoutRef.current = setTimeout(advanceStep, stepTimingsRef.current[nextStep]);
-                return nextStep;
-            });
-        };
-
-        // Start the first step
-        const firstStepTiming = stepTimingsRef.current[0];
-        timeoutRef.current = setTimeout(advanceStep, firstStepTiming);
-
-        return () => {
-            if (timeoutRef.current) {
-                clearTimeout(timeoutRef.current);
-            }
-        };
-    }, [isStatic]);
+const StatusBar = ({ size = 'md', className, currentStep: fixedStep, progress }: StatusBarProps) => {
+    const { stepIndex, label, detail } = resolveProgress(progress);
 
     const sizeClasses = {
         sm: {
@@ -82,7 +53,7 @@ const StatusBar = ({ size = 'md', className, currentStep: fixedStep }: StatusBar
             dot: 'w-1.5 h-1.5',
             gap: 'gap-1.5',
             container: 'gap-1'
-            },
+        },
         md: {
             text: 'text-sm',
             dot: 'w-2 h-2',
@@ -98,46 +69,53 @@ const StatusBar = ({ size = 'md', className, currentStep: fixedStep }: StatusBar
     };
 
     const classes = sizeClasses[size];
-    
-    // Total dots: 3 steps + 1 never-reached dot = 4
-    const totalDots = STATUS_STEPS.length + 1;
-    
-    // Don't animate pulse if static
-    const shouldAnimate = !isStatic;
 
-    // Small version: horizontal layout with text inline
+    // For large version, use fixed step if provided, otherwise show all completed
+    const statusPageCurrentStep = fixedStep !== undefined ? fixedStep : STATUS_PAGE_STEPS.length - 1;
+
+    // Total dots = pipeline stages + 1 trailing dot (never reached)
+    const totalDots = PIPELINE_STAGES.length + 1;
+
+    // Small version: dots + label on one row, detail text below
     if (size === 'sm') {
         return (
-            <div className={cn('flex items-center gap-2', className)}>
-                <div className={cn('flex items-center', classes.gap)}>
-                    {Array.from({ length: totalDots }).map((_, index) => (
-                        <div key={index} className="flex items-center gap-2">
-                            <div 
-                                className={cn(
-                                    'rounded-full transition-all duration-300',
-                                    classes.dot,
-                                    index < currentStep 
-                                        ? 'bg-[#03689B]' 
-                                        : index === currentStep 
-                                            ? shouldAnimate ? 'bg-[#03689B] animate-pulse' : 'bg-[#03689B]'
-                                            : 'bg-gray-300'
-                                )}
-                            />
-                            {index < totalDots - 1 && (
-                                <div 
+            <div className={cn('flex flex-col gap-1', className)}>
+                <div className="flex items-center gap-2">
+                    <div className={cn('flex items-center', classes.gap)}>
+                        {Array.from({ length: totalDots }).map((_, index) => (
+                            <div key={index} className="flex items-center gap-1">
+                                <div
                                     className={cn(
-                                        'h-0.5 transition-all duration-300',
-                                        index < currentStep ? 'bg-[#03689B]' : 'bg-gray-300',
-                                        'w-4'
+                                        'rounded-full transition-all duration-300',
+                                        classes.dot,
+                                        index < stepIndex
+                                            ? 'bg-[#03689B]'
+                                            : index === stepIndex
+                                                ? 'bg-[#03689B] animate-pulse'
+                                                : 'bg-gray-300'
                                     )}
                                 />
-                            )}
-                        </div>
-                    ))}
+                                {index < totalDots - 1 && (
+                                    <div
+                                        className={cn(
+                                            'h-0.5 transition-all duration-300',
+                                            index < stepIndex ? 'bg-[#03689B]' : 'bg-gray-300',
+                                            'w-2'
+                                        )}
+                                    />
+                                )}
+                            </div>
+                        ))}
+                    </div>
+                    <span className={cn('text-[#154273] whitespace-nowrap', classes.text)}>
+                        {label}
+                    </span>
                 </div>
-                <span className={cn('text-[#154273] whitespace-nowrap', classes.text)}>
-                    {STATUS_STEPS[currentStep]}
-                </span>
+                {detail && (
+                    <p className="text-[11px] text-[#154273]/50 leading-tight ml-0.5">
+                        {detail}
+                    </p>
+                )}
             </div>
         );
     }
@@ -149,11 +127,11 @@ const StatusBar = ({ size = 'md', className, currentStep: fixedStep }: StatusBar
                 {STATUS_PAGE_STEPS.map((step, index) => {
                     const isCompleted = index < statusPageCurrentStep;
                     const isCurrent = index === statusPageCurrentStep;
-                    
+
                     return (
                         <div key={index} className="flex items-start gap-4">
                             <div className="flex flex-col items-center gap-2 mt-1">
-                                <div 
+                                <div
                                     className={cn(
                                         'rounded-full flex-shrink-0 transition-all duration-300',
                                         classes.dot,
@@ -163,7 +141,7 @@ const StatusBar = ({ size = 'md', className, currentStep: fixedStep }: StatusBar
                                     )}
                                 />
                                 {index < STATUS_PAGE_STEPS.length - 1 && (
-                                    <div 
+                                    <div
                                         className={cn(
                                             'w-0.5 transition-all duration-300',
                                             isCompleted ? 'bg-[#03689B]' : 'bg-gray-300',
@@ -196,35 +174,41 @@ const StatusBar = ({ size = 'md', className, currentStep: fixedStep }: StatusBar
             <div className={cn('flex items-center', classes.gap)}>
                 {Array.from({ length: totalDots }).map((_, index) => (
                     <div key={index} className="flex items-center gap-2">
-                        <div 
+                        <div
                             className={cn(
                                 'rounded-full transition-all duration-300',
                                 classes.dot,
-                                index < currentStep 
-                                    ? 'bg-[#03689B]' 
-                                    : index === currentStep 
-                                        ? shouldAnimate ? 'bg-[#03689B] animate-pulse' : 'bg-[#03689B]'
+                                index < stepIndex
+                                    ? 'bg-[#03689B]'
+                                    : index === stepIndex
+                                        ? 'bg-[#03689B] animate-pulse'
                                         : 'bg-gray-300'
                             )}
                         />
                         {index < totalDots - 1 && (
-                            <div 
+                            <div
                                 className={cn(
                                     'h-0.5 transition-all duration-300',
-                                    index < currentStep ? 'bg-[#03689B]' : 'bg-gray-300',
-                                    size === 'md' ? 'w-6' : 'w-8'
+                                    index < stepIndex ? 'bg-[#03689B]' : 'bg-gray-300',
+                                    size === 'md' ? 'w-4' : 'w-8'
                                 )}
                             />
                         )}
                     </div>
                 ))}
             </div>
-            <div className={cn('text-[#154273]', classes.text)}>
-                {STATUS_STEPS[currentStep]}
+            <div className="flex items-baseline gap-1.5">
+                <span className={cn('text-[#154273]', classes.text)}>
+                    {label}
+                </span>
+                {detail && (
+                    <span className="text-xs text-[#154273]/60 truncate max-w-[200px]">
+                        {detail}
+                    </span>
+                )}
             </div>
         </div>
     );
 };
 
 export default StatusBar;
-

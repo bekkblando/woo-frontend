@@ -438,7 +438,7 @@ const RequestForm = ({ finalize = false }: { finalize?: boolean }) => {
                             <label className="block text-sm font-medium text-[#154273] mb-2">{question.question}</label>
                             {question.answer_loading ? (
                                 <div className="py-2">
-                                    <StatusBar size="sm" />
+                                    <StatusBar size="sm" progress={question.progress} />
                                 </div>
                             ) : question.answer ? (
                                 <AnswerViewer answer={question.answer} documentNames={documentNames} />

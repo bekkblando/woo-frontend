@@ -108,6 +108,11 @@ const useChat = (accessToken: string | null, functionsCaller: (functionDefinitio
                         name: "woo_question_answered",
                         arguments: parsedChunk.data
                     });
+                } else if (parsedChunk.type === "woo_question_progress") {
+                    functionsCaller({
+                        name: "woo_question_progress",
+                        arguments: parsedChunk.data
+                    });
                 } else if (parsedChunk.type === "questions_added") {
                     console.log('Received questions_added', parsedChunk.data);
                     functionsCaller({
