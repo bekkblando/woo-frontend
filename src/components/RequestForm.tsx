@@ -1,4 +1,4 @@
-import { useContext, useState, useCallback, useMemo, useEffect } from 'react';
+import { useContext, useState, useCallback, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { IconChevronDown, IconDownload, IconPaperclip, IconX } from '@tabler/icons-react';
 import { RequestFormContext } from '../context/RequestFormContext';
@@ -242,8 +242,19 @@ const RequestForm = ({ finalize = false }: { finalize?: boolean }) => {
         type: 'informatieverzoek' | 'woo_verzoek';
     }>({ isOpen: false, type: 'informatieverzoek' });
 
-    // Map of document_id -> document name, fetched from the backend
-    const [documentNames, setDocumentNames] = useState<Record<string, string>>({});
+    // Build document name map directly from enriched answer blocks (no API calls)
+    const documentNames = useMemo<Record<string, string>>(() => {
+        if (!requestForm) return {};
+        const names: Record<string, string> = {};
+        requestForm.questions.forEach((question) => {
+            question.answer?.details?.blocks?.forEach((block) => {
+                if (block.document_id && block.document_name && !names[block.document_id]) {
+                    names[block.document_id] = block.document_name;
+                }
+            });
+        });
+        return names;
+    }, [requestForm?.questions]);
 
     const handleDownloadDocument = useCallback(async (documentId: string, documentName: string) => {
         try {
@@ -267,53 +278,6 @@ const RequestForm = ({ finalize = false }: { finalize?: boolean }) => {
             toast.error('Fout bij downloaden van document');
         }
     }, []);
-
-    // Collect all unique document IDs referenced in evidence blocks
-    const uniqueDocumentIds = useMemo(() => {
-        if (!requestForm) return [];
-        const ids = new Set<string>();
-        requestForm.questions.forEach((question) => {
-            if (question.answer?.details?.blocks) {
-                question.answer.details.blocks.forEach((block) => {
-                    if (block.type === 'evidence' && block.document_id) {
-                        ids.add(block.document_id);
-                    }
-                });
-            }
-        });
-        return Array.from(ids);
-    }, [requestForm?.questions]);
-
-    // Fetch document names for all unique document IDs
-    useEffect(() => {
-        if (uniqueDocumentIds.length === 0) return;
-
-        // Only fetch names we don't already have
-        const missing = uniqueDocumentIds.filter((id) => !documentNames[id]);
-        if (missing.length === 0) return;
-
-        const fetchNames = async () => {
-            const newNames: Record<string, string> = {};
-            await Promise.all(
-                missing.map(async (docId) => {
-                    try {
-                        const res = await fetch(`${BACKEND_URL}/api/documents/${docId}/presigned-url/`, { credentials: 'include' });
-                        if (res.ok) {
-                            const data = await res.json();
-                            if (data.name) newNames[docId] = data.name;
-                        }
-                    } catch {
-                        // ignore – we'll just show a fallback name
-                    }
-                })
-            );
-            if (Object.keys(newNames).length > 0) {
-                setDocumentNames((prev) => ({ ...prev, ...newNames }));
-            }
-        };
-
-        fetchNames();
-    }, [uniqueDocumentIds]);
 
     // Build appendix data grouped by document, with page references underneath
     const appendixByDocument = useMemo(() => {
