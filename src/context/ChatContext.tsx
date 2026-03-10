@@ -243,11 +243,11 @@ export function ChatProvider({ children }: Props) {
 
     ws.onclose = () => {
       console.log("[ChatContext] WebSocket closed");
-      wsRef.current = null;
     };
 
     return () => {
       ws.close();
+      wsRef.current = null;
     };
   }, []);
 
