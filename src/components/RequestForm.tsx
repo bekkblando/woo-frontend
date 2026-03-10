@@ -229,7 +229,7 @@ const AnswerViewer = ({ answer, documentNames }: { answer: Answer; documentNames
     );
 };
 
-const RequestForm = ({ finalize = false }: { finalize?: boolean }) => {
+const RequestForm = ({ finalize = false, readOnly = false }: { finalize?: boolean; readOnly?: boolean }) => {
     const requestForm = useContext(RequestFormContext);
     const uploadedDocuments = requestForm?.uploadedDocuments ?? [];
     const onRemoveDocument = requestForm?.removeUploadedDocument;
@@ -392,8 +392,8 @@ const RequestForm = ({ finalize = false }: { finalize?: boolean }) => {
 
     console.log("Request form questions", requestForm.questions);
     return (
-        <div className={`${finalize ? 'flex flex-col md:flex-row md:items-start gap-6' : 'flex flex-col'}`}>
-            <div className={`${finalize ? 'w-full md:w-1/2' : 'max-h-[70vh]'} flex flex-col`}>
+        <div className={`${finalize || readOnly ? 'flex flex-col md:flex-row md:items-start gap-6' : 'flex flex-col'}`}>
+            <div className={`${finalize || readOnly ? 'w-full md:w-1/2' : 'max-h-[70vh]'} flex flex-col`}>
                 <div className={`p-6 md:p-8 flex-1 overflow-y-auto bg-[#F5F5F5] border-2 border-[#738DA7] mb-6`}>
                     <div className="text-sm py-2">
                         <p className="text-sm py-2">Onderwerp: Informatie verzoek </p>
@@ -413,35 +413,37 @@ const RequestForm = ({ finalize = false }: { finalize?: boolean }) => {
                                 <div className="flex items-center gap-2 py-2">
                                     <div className="flex-shrink-0 w-3 h-3 rounded-full bg-red-500" />
                                     <span className="text-sm text-red-600">Beantwoording mislukt</span>
-                                    <button
-                                        onClick={async () => {
-                                            try {
-                                                const res = await fetch(`${BACKEND_URL}/api/woo-questions/${question.id}/retry/`, {
-                                                    method: 'POST',
-                                                    headers: getCSRFHeaders({ 'Content-Type': 'application/json' }),
-                                                    credentials: 'include',
-                                                });
-                                                if (!res.ok) {
-                                                    const err = await res.json().catch(() => ({}));
-                                                    throw new Error(err.error || 'Retry mislukt');
+                                    {!readOnly && (
+                                        <button
+                                            onClick={async () => {
+                                                try {
+                                                    const res = await fetch(`${BACKEND_URL}/api/woo-questions/${question.id}/retry/`, {
+                                                        method: 'POST',
+                                                        headers: getCSRFHeaders({ 'Content-Type': 'application/json' }),
+                                                        credentials: 'include',
+                                                    });
+                                                    if (!res.ok) {
+                                                        const err = await res.json().catch(() => ({}));
+                                                        throw new Error(err.error || 'Retry mislukt');
+                                                    }
+                                                    // Reset the question to loading state
+                                                    requestForm.setQuestions((prev) =>
+                                                        prev.map((q) =>
+                                                            q.id === question.id
+                                                                ? { ...q, answer_loading: true, answer_failed: false, error_message: '', progress: undefined }
+                                                                : q
+                                                        )
+                                                    );
+                                                } catch (err) {
+                                                    console.error('Retry failed:', err);
+                                                    toast.error(err instanceof Error ? err.message : 'Retry mislukt');
                                                 }
-                                                // Reset the question to loading state
-                                                requestForm.setQuestions((prev) =>
-                                                    prev.map((q) =>
-                                                        q.id === question.id
-                                                            ? { ...q, answer_loading: true, answer_failed: false, error_message: '', progress: undefined }
-                                                            : q
-                                                    )
-                                                );
-                                            } catch (err) {
-                                                console.error('Retry failed:', err);
-                                                toast.error(err instanceof Error ? err.message : 'Retry mislukt');
-                                            }
-                                        }}
-                                        className="text-xs text-[#03689B] hover:underline ml-2"
-                                    >
-                                        Opnieuw proberen
-                                    </button>
+                                            }}
+                                            className="text-xs text-[#03689B] hover:underline ml-2"
+                                        >
+                                            Opnieuw proberen
+                                        </button>
+                                    )}
                                 </div>
                             ) : question.answer ? (
                                 <AnswerViewer answer={question.answer} documentNames={documentNames} />
@@ -465,7 +467,7 @@ const RequestForm = ({ finalize = false }: { finalize?: boolean }) => {
                                     <li key={doc.s3_key} className="flex items-center gap-2 text-sm text-[#154273]">
                                         <IconPaperclip className="h-3.5 w-3.5 text-[#03689B] flex-shrink-0" />
                                         <span className="truncate flex-1">{doc.filename}</span>
-                                        {onRemoveDocument && (
+                                        {!readOnly && onRemoveDocument && (
                                             <button
                                                 onClick={() => onRemoveDocument(doc.s3_key)}
                                                 className="flex-shrink-0 text-gray-400 hover:text-red-600 transition-colors"
@@ -571,7 +573,25 @@ const RequestForm = ({ finalize = false }: { finalize?: boolean }) => {
                     )}
                 </div>
             </div>
-            { finalize ? (
+            {readOnly ? (
+                <div className="w-full md:w-1/2 flex flex-col gap-6 px-6">
+                    <div className="text-sm w-full md:w-8/10 flex flex-col gap-2 justify-between text-left items-center">
+                        <div className="text-2xl font-bold self-start leading-none">Download jouw verzoek</div>
+                        <div className="self-start">Download hier het verzoek als pdf-bestand, inclusief bronverwijzingen en bijlagen.</div>
+                        <button onClick={handleDownloadPdf} disabled={submitting} className="text-base display-inline-block bg-[#154273] mt-2 self-start text-white px-4 py-2">
+                            Download verzoek
+                        </button>
+                    </div>
+
+                    <div className="text-sm mt-10 w-full md:w-8/10 flex flex-col gap-2 justify-between text-left items-center">
+                        <div className="text-2xl font-bold self-start">Ontvang per e-mail</div>
+                        <div className="self-start">Ontvang het verzoek als bijlage in een e-mail.</div>
+                        <button onClick={() => setIsEmailModalOpen(true)} disabled={submitting} className="text-base display-inline-block bg-[#F68153] mt-2 self-start text-white px-4 py-2">
+                            Ontvang per e-mail
+                        </button>
+                    </div>
+                </div>
+            ) : finalize ? (
                 <>
                 {/* {!emailSubmitted ? <div>
                     <p>Voer je mailadres in</p>
