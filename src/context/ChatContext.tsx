@@ -136,21 +136,28 @@ export function ChatProvider({ children }: Props) {
   // ---- WebSocket lifecycle (app-level, single persistent connection) ----
   useEffect(() => {
     const wsUrl = BACKEND_URL.replace(/^http/, "ws") + "/ws/conversation/";
+    console.log("[ChatContext] Initializing WebSocket connection to:", wsUrl);
     const ws = new ReconnectingWebSocket(wsUrl);
     wsRef.current = ws;
+    console.log("[ChatContext] WebSocket created, initial readyState:", ws.readyState);
 
     ws.onopen = () => {
+      console.log("[ChatContext] WebSocket opened, readyState:", ws.readyState);
       // Re-subscribe if we already had an active token (reconnection case)
       const token = accessTokenRef.current;
       if (token) {
+        console.log("[ChatContext] Re-subscribing to token on reconnect:", token);
         ws.send(JSON.stringify({ subscribe: token }));
         subscribedGroupsRef.current.add(token);
+      } else {
+        console.log("[ChatContext] No active token to re-subscribe");
       }
     };
 
     ws.onmessage = (event: MessageEvent) => {
       try {
         const parsed = JSON.parse(event.data);
+        console.log("[ChatContext] WebSocket message received, type:", parsed.type || "streaming", "keys:", Object.keys(parsed));
 
         // --- Non-chat events: delegate to registered handler ---
         if (parsed.type === "woo_question_answered") {
@@ -177,6 +184,7 @@ export function ChatProvider({ children }: Props) {
 
         // --- Streaming text chunks ---
         if (parsed.message) {
+          console.log("[ChatContext] Received streaming chunk, length:", parsed.message.length);
           setAwaitingResponse(false);
           messageContentRef.current += parsed.message;
           setAnimatedText((prev) => prev + parsed.message);
@@ -201,11 +209,13 @@ export function ChatProvider({ children }: Props) {
 
         // --- Completion ---
         if (parsed.completed || parsed.type === "complete") {
+          console.log("[ChatContext] Received completion message");
           setAwaitingResponse(false);
           const raw = messageContentRef.current;
           if (raw) {
             // Prefer backend-processed content (org-tag replacement) when available
             const finalContent = parsed.content || raw;
+            console.log("[ChatContext] Message completed, final length:", finalContent.length);
             setIsComplete(true);
             setMessages((prev) => [
               ...prev,
@@ -228,10 +238,11 @@ export function ChatProvider({ children }: Props) {
     };
 
     ws.onerror = (event) => {
-      console.error("WebSocket error", event);
+      console.error("[ChatContext] WebSocket error", event, "readyState:", ws.readyState);
     };
 
     ws.onclose = () => {
+      console.log("[ChatContext] WebSocket closed");
       wsRef.current = null;
     };
 
@@ -244,18 +255,59 @@ export function ChatProvider({ children }: Props) {
 
   /** Subscribe the WS to a conversation group (idempotent). */
   const wsSubscribe = useCallback((token: string) => {
+    console.log("[ChatContext] wsSubscribe called with token:", token);
     const ws = wsRef.current;
-    if (ws && ws.readyState === WebSocket.OPEN) {
+    if (!ws) {
+      console.warn("[ChatContext] wsSubscribe: WebSocket ref is null");
+      return;
+    }
+    const readyState = ws.readyState;
+    const readyStateName = readyState === WebSocket.CONNECTING ? "CONNECTING" :
+                          readyState === WebSocket.OPEN ? "OPEN" :
+                          readyState === WebSocket.CLOSING ? "CLOSING" :
+                          readyState === WebSocket.CLOSED ? "CLOSED" : "UNKNOWN";
+    console.log("[ChatContext] wsSubscribe: WebSocket readyState =", readyState, `(${readyStateName})`);
+    
+    if (readyState === WebSocket.OPEN) {
+      const alreadySubscribed = subscribedGroupsRef.current.has(token);
+      if (alreadySubscribed) {
+        console.log("[ChatContext] wsSubscribe: Already subscribed to token, skipping");
+        return;
+      }
+      console.log("[ChatContext] wsSubscribe: Sending subscribe message for token:", token);
       ws.send(JSON.stringify({ subscribe: token }));
       subscribedGroupsRef.current.add(token);
+      console.log("[ChatContext] wsSubscribe: Successfully subscribed. Subscribed groups:", Array.from(subscribedGroupsRef.current));
+    } else {
+      console.warn("[ChatContext] wsSubscribe: WebSocket not OPEN, cannot subscribe. State:", readyStateName);
     }
   }, []);
 
   /** Send a dispatch command via WS to trigger Celery LLM streaming. */
   const wsDispatch = useCallback((token: string) => {
+    console.log("[ChatContext] wsDispatch called with token:", token);
     const ws = wsRef.current;
-    if (ws && ws.readyState === WebSocket.OPEN) {
-      ws.send(JSON.stringify({ dispatch: token }));
+    if (!ws) {
+      console.error("[ChatContext] wsDispatch: WebSocket ref is null - DISPATCH FAILED");
+      return;
+    }
+    const readyState = ws.readyState;
+    const readyStateName = readyState === WebSocket.CONNECTING ? "CONNECTING" :
+                          readyState === WebSocket.OPEN ? "OPEN" :
+                          readyState === WebSocket.CLOSING ? "CLOSING" :
+                          readyState === WebSocket.CLOSED ? "CLOSED" : "UNKNOWN";
+    console.log("[ChatContext] wsDispatch: WebSocket readyState =", readyState, `(${readyStateName})`);
+    
+    if (readyState === WebSocket.OPEN) {
+      console.log("[ChatContext] wsDispatch: Sending dispatch message for token:", token);
+      try {
+        ws.send(JSON.stringify({ dispatch: token }));
+        console.log("[ChatContext] wsDispatch: Dispatch message sent successfully");
+      } catch (error) {
+        console.error("[ChatContext] wsDispatch: Error sending dispatch message:", error);
+      }
+    } else {
+      console.error("[ChatContext] wsDispatch: WebSocket not OPEN, cannot dispatch - DISPATCH FAILED. State:", readyStateName);
     }
   }, []);
 
@@ -287,7 +339,8 @@ export function ChatProvider({ children }: Props) {
           token = data.access_token;
           accessTokenRef.current = token;
           setAccessToken(token);
-          wsSubscribe(token);
+          // TypeScript knows data.access_token is truthy here, so it's a string
+          wsSubscribe(data.access_token);
         }
         if (data.document) {
           setUploadedDocuments((prev) => [
@@ -305,6 +358,7 @@ export function ChatProvider({ children }: Props) {
 
   const sendMessage = useCallback(
     async (message: string, files?: File[]) => {
+      console.log("[ChatContext] sendMessage called, message length:", message.length, "files:", files?.length || 0);
       try {
         setIsComplete(false);
         setAnimatedText("");
@@ -314,12 +368,18 @@ export function ChatProvider({ children }: Props) {
 
         // Upload files first if provided
         let activeToken = accessTokenRef.current;
+        console.log("[ChatContext] sendMessage: Current activeToken:", activeToken);
         if (files && files.length > 0) {
+          console.log("[ChatContext] sendMessage: Uploading files...");
           const newToken = await uploadFiles(files);
-          if (newToken) activeToken = newToken;
+          if (newToken) {
+            activeToken = newToken;
+            console.log("[ChatContext] sendMessage: Got new token from file upload:", newToken);
+          }
         }
 
         // POST to save message (non-blocking — no LLM work)
+        console.log("[ChatContext] sendMessage: POSTing message to backend with token:", activeToken);
         const response = await fetch(
           `${BACKEND_URL}/api/conversations/send-message/`,
           {
@@ -340,20 +400,35 @@ export function ChatProvider({ children }: Props) {
 
         const data = await response.json();
         const token = data.access_token;
+        console.log("[ChatContext] sendMessage: Backend returned token:", token);
 
         // Update token state
         if (token) {
           accessTokenRef.current = token;
           setAccessToken(token);
 
+          // Check WebSocket state before subscribing/dispatching
+          const ws = wsRef.current;
+          const wsState = ws ? ws.readyState : null;
+          console.log("[ChatContext] sendMessage: About to subscribe/dispatch. WebSocket state:", 
+            wsState === WebSocket.OPEN ? "OPEN" :
+            wsState === WebSocket.CONNECTING ? "CONNECTING" :
+            wsState === WebSocket.CLOSING ? "CLOSING" :
+            wsState === WebSocket.CLOSED ? "CLOSED" : "NULL");
+
           // Subscribe then dispatch (sequential on the same WS, so subscribe
           // is guaranteed to complete before dispatch is processed)
+          console.log("[ChatContext] sendMessage: Calling wsSubscribe...");
           wsSubscribe(token);
+          console.log("[ChatContext] sendMessage: Calling wsDispatch...");
           wsDispatch(token);
           setAwaitingResponse(true);
+          console.log("[ChatContext] sendMessage: Set awaitingResponse to true");
+        } else {
+          console.warn("[ChatContext] sendMessage: No token returned from backend");
         }
       } catch (error) {
-        console.error("Failed to send message", error);
+        console.error("[ChatContext] sendMessage: Failed to send message", error);
       }
     },
     [uploadFiles, wsSubscribe, wsDispatch]
@@ -402,6 +477,7 @@ export function ChatProvider({ children }: Props) {
   );
 
   const resetConversation = useCallback(() => {
+    console.log("[ChatContext] resetConversation called");
     setAccessToken(null);
     accessTokenRef.current = null;
     setMessages([]);
@@ -413,6 +489,7 @@ export function ChatProvider({ children }: Props) {
     setUploadedDocuments([]);
     setCurrentMessageKey(generateSecureRandomKey());
     subscribedGroupsRef.current.clear();
+    console.log("[ChatContext] resetConversation: Cleared subscribed groups");
   }, []);
 
   const createConversation = useCallback(async (): Promise<string | null> => {
