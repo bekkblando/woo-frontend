@@ -17,6 +17,10 @@ export type Answer = {
       chunk_id?: string;
       document_id?: string;
       page_number?: number;
+      document_name?: string;
+      document_date?: string;
+      document_description?: string;
+      original_url?: string;
     }>;
   };
   chunks?: Array<{
@@ -61,6 +65,7 @@ type RequestFormContextValue = {
   uploadedDocuments: UploadedDocument[];
   setUploadedDocuments: (value: UploadedDocument[] | ((prev: UploadedDocument[]) => UploadedDocument[])) => void;
   removeUploadedDocument: (s3Key: string) => Promise<void>;
+  reset: () => void;
 };
 
 export const RequestFormContext = createContext<RequestFormContextValue | null>(null);
@@ -85,6 +90,11 @@ export function RequestFormProvider({ children }: Props) {
     setQuestions(questions => questions.map((q: Question) =>
       q.id === wooQuestionId ? { ...q, progress } : q
     ));
+  }, []);
+
+  const reset = useCallback(() => {
+    setQuestions([]);
+    setUploadedDocuments([]);
   }, []);
 
   const removeUploadedDocument = useCallback(async (s3Key: string) => {
@@ -161,8 +171,9 @@ export function RequestFormProvider({ children }: Props) {
       uploadedDocuments,
       setUploadedDocuments,
       removeUploadedDocument,
+      reset,
     }),
-    [questions, updateAnswer, updateQuestionProgress, uploadedDocuments, removeUploadedDocument]
+    [questions, updateAnswer, updateQuestionProgress, uploadedDocuments, removeUploadedDocument, reset]
   );
 
   return <RequestFormContext.Provider value={value}>{children}</RequestFormContext.Provider>;

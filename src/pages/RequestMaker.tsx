@@ -2,7 +2,8 @@ import Chat from '../components/Chat'
 import RequestForm from '../components/RequestForm'
 import { useSearchParams } from 'react-router-dom'
 import { useContext, useEffect, useState, useRef } from 'react'
-import { RequestFormContext, type Answer } from '../context/RequestFormContext';
+import { RequestFormContext } from '../context/RequestFormContext';
+import { useChatContext } from '../context/ChatContext';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import { Sheet } from 'react-modal-sheet';
@@ -10,33 +11,11 @@ import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import SEO from '../components/SEO';
 
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://127.0.0.1:8003";
-
-interface Message {
-  role: string;
-  content: string;
-}
-
-interface WooRequestData {
-  id: number;
-  questions: { id: number; question: string; answer: Answer | null }[];
-}
-interface ConversationData {
-  id: number;
-  access_token: string;
-  title: string;
-  created_at: string;
-  messages: Message[];
-  documents: { s3_key: string; filename: string; content_type: string; size?: number }[];
-  woo_request: WooRequestData;
-}
-
 const RequestMaker = () => {
     const requestForm = useContext(RequestFormContext);
-    const [searchParams] = useSearchParams();
+    const chatContext = useChatContext();
+    const [searchParams, setSearchParams] = useSearchParams();
     const accessToken = searchParams.get("accessToken");
-    const [initialMessages, setInitialMessages] = useState<Message[] | null>(null);
-    const [loading, setLoading] = useState(false);
     const hasQuestions = Boolean(requestForm?.questions && requestForm.questions.length > 0);
     const [isMobile, setIsMobile] = useState(false);
     // Initialize sheet open on mobile if questions exist
@@ -52,6 +31,7 @@ const RequestMaker = () => {
     const lastQuestionAddedNotificationRef = useRef<number>(0);
     const lastQuestionAnsweredNotificationRef = useRef<number>(0);
     const DEBOUNCE_TIME = 30000; // 30 seconds
+    const initializedRef = useRef(false);
 
   // Check if we're on mobile/tablet (below lg breakpoint which is 1024px)
   useEffect(() => {
@@ -71,52 +51,31 @@ const RequestMaker = () => {
     }
   }, [isMobile, isSheetOpen]);
 
+  // On mount: hydrate from DB if needed, or create conversation eagerly
   useEffect(() => {
-    const fetchConversation = async () => {
+    if (initializedRef.current) return;
+    initializedRef.current = true;
+
+    const init = async () => {
       if (accessToken) {
-        setLoading(true);
-        try {
-          const response = await fetch(`${BACKEND_URL}/api/conversations/${accessToken}/`, { credentials: 'include' });
-          if (response.ok) {
-            const data: ConversationData = await response.json();
-            console.log("Data", data);
-            setInitialMessages(data.messages);
-            if (data.documents && data.documents.length > 0 && requestForm) {
-              requestForm.setUploadedDocuments(data.documents);
-            }
-            if (requestForm) {
-                requestForm.setQuestions(
-                    data.woo_request.questions.map(q => ({ 
-                        id: q.id,
-                        question: q.question,
-                        answer: q.answer ? { 
-                            id: q.answer.id, 
-                            woo_question: q.id, 
-                            answer: q.answer.answer, 
-                            chunks: q.answer.chunks || [],
-                            details: q.answer.details || {},
-                            answered: q.answer.answered
-                        } : undefined, 
-                        answer_loading: q.answer ? false : true, 
-                        saved: true 
-                    })));
-            }
-          } else {
-            console.error('Failed to fetch conversation');
-            setInitialMessages(null);
-          }
-        } catch (error) {
-          console.error('Error fetching conversation:', error);
-          setInitialMessages(null);
-        } finally {
-          setLoading(false);
+        // We have a token in the URL
+        if (chatContext.messages.length === 0) {
+          // Context is empty (page refresh, bookmark, or back-navigation
+          // after Landing cleared state) → hydrate from DB
+          await chatContext.loadConversation(accessToken);
         }
+        // If context already has messages (navigated from Landing after
+        // sendMessage), this is a no-op — just let it render.
       } else {
-        setInitialMessages(null);
+        // Direct navigation to /request with no token → eager creation
+        const token = await chatContext.createConversation();
+        if (token) {
+          setSearchParams({ accessToken: token }, { replace: true } as any);
+        }
       }
     };
 
-    fetchConversation();
+    init();
   }, []);
 
   // Update sheet state when questions change
@@ -227,13 +186,7 @@ const RequestMaker = () => {
           <p>Door onze vragen te beantwoorden, kun je in het venster rechts zien wat er gebeurt. </p>
 
          </div>
-          {loading ? (
-          <div className="h-full flex items-center justify-center">
-            <div className="text-[#154273]">Loading conversation...</div>
-          </div>
-          ) : (
-            <Chat initialMessages={initialMessages} />
-          )}
+          <Chat />
         </div>
         {/* Desktop: Show RequestForm in sidebar */}
         <div className="hidden lg:block px-6 w-1/2">
