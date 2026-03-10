@@ -57,9 +57,9 @@ export interface ChatContextValue {
 
   /**
    * Register a callback that will be called for every function-call-style WS
-   * event (questions_added, woo_question_answered, woo_question_progress, and
-   * generic tool_calls). Chat.tsx uses this to bridge events into
-   * RequestFormContext.
+   * event (questions_added, woo_question_answered, woo_question_progress,
+   * woo_question_failed, and generic tool_calls). Chat.tsx uses this to bridge
+   * events into RequestFormContext.
    */
   setFunctionCallHandler: (
     handler: ((def: FunctionDefinition) => void) | null
@@ -170,6 +170,13 @@ export function ChatProvider({ children }: Props) {
         if (parsed.type === "woo_question_progress") {
           functionCallHandlerRef.current?.({
             name: "woo_question_progress",
+            arguments: parsed.data,
+          });
+          return;
+        }
+        if (parsed.type === "woo_question_failed") {
+          functionCallHandlerRef.current?.({
+            name: "woo_question_failed",
             arguments: parsed.data,
           });
           return;

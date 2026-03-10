@@ -409,6 +409,40 @@ const RequestForm = ({ finalize = false }: { finalize?: boolean }) => {
                                 <div className="py-2">
                                     <StatusBar size="sm" progress={question.progress} />
                                 </div>
+                            ) : question.answer_failed ? (
+                                <div className="flex items-center gap-2 py-2">
+                                    <div className="flex-shrink-0 w-3 h-3 rounded-full bg-red-500" />
+                                    <span className="text-sm text-red-600">Beantwoording mislukt</span>
+                                    <button
+                                        onClick={async () => {
+                                            try {
+                                                const res = await fetch(`${BACKEND_URL}/api/woo-questions/${question.id}/retry/`, {
+                                                    method: 'POST',
+                                                    headers: getCSRFHeaders({ 'Content-Type': 'application/json' }),
+                                                    credentials: 'include',
+                                                });
+                                                if (!res.ok) {
+                                                    const err = await res.json().catch(() => ({}));
+                                                    throw new Error(err.error || 'Retry mislukt');
+                                                }
+                                                // Reset the question to loading state
+                                                requestForm.setQuestions((prev) =>
+                                                    prev.map((q) =>
+                                                        q.id === question.id
+                                                            ? { ...q, answer_loading: true, answer_failed: false, error_message: '', progress: undefined }
+                                                            : q
+                                                    )
+                                                );
+                                            } catch (err) {
+                                                console.error('Retry failed:', err);
+                                                toast.error(err instanceof Error ? err.message : 'Retry mislukt');
+                                            }
+                                        }}
+                                        className="text-xs text-[#03689B] hover:underline ml-2"
+                                    >
+                                        Opnieuw proberen
+                                    </button>
+                                </div>
                             ) : question.answer ? (
                                 <AnswerViewer answer={question.answer} documentNames={documentNames} />
                             ) : null}

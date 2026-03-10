@@ -46,6 +46,9 @@ export type Question = {
   question: string;
   answer?: Answer;
   answer_loading?: boolean;
+  answer_failed?: boolean;
+  error_message?: string;
+  status?: "pending" | "processing" | "completed" | "failed";
   saved?: boolean;
   progress?: QuestionProgress;
 };
@@ -62,6 +65,7 @@ type RequestFormContextValue = {
   questions: Question[];
   updateAnswer: (answer: Answer) => void;
   updateQuestionProgress: (wooQuestionId: number, progress: QuestionProgress) => void;
+  markQuestionFailed: (wooQuestionId: number, errorMessage?: string) => void;
   uploadedDocuments: UploadedDocument[];
   setUploadedDocuments: (value: UploadedDocument[] | ((prev: UploadedDocument[]) => UploadedDocument[])) => void;
   removeUploadedDocument: (s3Key: string) => Promise<void>;
@@ -89,6 +93,14 @@ export function RequestFormProvider({ children }: Props) {
   const updateQuestionProgress = useCallback((wooQuestionId: number, progress: QuestionProgress) => {
     setQuestions(questions => questions.map((q: Question) =>
       q.id === wooQuestionId ? { ...q, progress } : q
+    ));
+  }, []);
+
+  const markQuestionFailed = useCallback((wooQuestionId: number, errorMessage?: string) => {
+    setQuestions(questions => questions.map((q: Question) =>
+      q.id === wooQuestionId
+        ? { ...q, answer_loading: false, answer_failed: true, error_message: errorMessage || "Beantwoording mislukt", progress: undefined }
+        : q
     ));
   }, []);
 
@@ -168,12 +180,13 @@ export function RequestFormProvider({ children }: Props) {
       setQuestions,
       updateAnswer,
       updateQuestionProgress,
+      markQuestionFailed,
       uploadedDocuments,
       setUploadedDocuments,
       removeUploadedDocument,
       reset,
     }),
-    [questions, updateAnswer, updateQuestionProgress, uploadedDocuments, removeUploadedDocument, reset]
+    [questions, updateAnswer, updateQuestionProgress, markQuestionFailed, uploadedDocuments, removeUploadedDocument, reset]
   );
 
   return <RequestFormContext.Provider value={value}>{children}</RequestFormContext.Provider>;

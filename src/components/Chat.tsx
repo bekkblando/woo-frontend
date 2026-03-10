@@ -62,6 +62,13 @@ const Chat = () => {
                 }
                 return;
             }
+            if (def.name === "woo_question_failed") {
+                const data = def.arguments;
+                if (data.id) {
+                    requestForm?.markQuestionFailed(data.id, data.error_message);
+                }
+                return;
+            }
             if (def.name === "questions_added") {
                 const data = def.arguments;
                 if (!data.questions || !Array.isArray(data.questions) || !requestForm) return;
@@ -75,8 +82,11 @@ const Chat = () => {
                               answer: q.answer.answer || "",
                               chunks: q.answer.chunks || [],
                           }
-                        : { id: 0, answer: "", chunks: [] },
-                    answer_loading: !q.answer,
+                        : undefined,
+                    status: q.status || "pending",
+                    answer_loading: q.status === "processing" || q.status === "pending" || !q.answer,
+                    answer_failed: q.status === "failed",
+                    error_message: q.error_message || "",
                     saved: true,
                 }));
 
@@ -110,7 +120,10 @@ const Chat = () => {
                                       answered: q.answer.answered,
                                   }
                                 : undefined,
-                            answer_loading: q.answer ? false : true,
+                            status: q.status,
+                            answer_loading: q.status === "processing" || q.status === "pending",
+                            answer_failed: q.status === "failed",
+                            error_message: q.error_message || "",
                             saved: true,
                         }))
                     );
