@@ -3,6 +3,7 @@ import TypewriterStreaming from "./ui/typewriter-streaming.tsx";
 import { IconPaperclip, IconSend2, IconX, IconLoader2 } from "@tabler/icons-react";
 import { RequestFormContext } from "../context/RequestFormContext.tsx";
 import { useChatContext, type FunctionDefinition } from "../context/ChatContext.tsx";
+import ChatLoading from "./ui/chat-loading.tsx";
 import ReactMarkdown from "react-markdown";
 
 const ALLOWED_EXTENSIONS = [
@@ -32,6 +33,7 @@ const Chat = () => {
         uploadDocuments,
         setFunctionCallHandler,
         loading: chatLoading,
+        awaitingResponse,
     } = useChatContext();
 
     // Register a function-call handler that bridges WS events into
@@ -217,7 +219,7 @@ const Chat = () => {
         return (
             <div className="rounded-lg flex flex-col bg-[#EFF7FC] border-2 border-[#03689B]">
                 <div className="flex-1 overflow-y-auto p-2 md:p-8 flex items-center justify-center min-h-[200px]">
-                    <div className="text-[#154273]">Loading conversation...</div>
+                    <ChatLoading />
                 </div>
             </div>
         );
@@ -259,6 +261,7 @@ const Chat = () => {
                         </div>
                     )
                 )}
+                {awaitingResponse && animatedText === "" && <ChatLoading />}
                 {animatedText !== "" && (
                     <TypewriterStreaming
                         currentMessageKey={currentMessageKey}

@@ -42,6 +42,8 @@ export interface ChatContextValue {
   animatedText: string;
   isComplete: boolean;
   loading: boolean;
+  /** True after dispatch, before the first streaming chunk arrives. */
+  awaitingResponse: boolean;
   currentMessageKey: string;
   uploadedDocuments: UploadedDocument[];
 
@@ -107,6 +109,7 @@ export function ChatProvider({ children }: Props) {
   const [animatedText, setAnimatedText] = useState<string>("");
   const [isComplete, setIsComplete] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(false);
+  const [awaitingResponse, setAwaitingResponse] = useState<boolean>(false);
   const [currentMessageKey, setCurrentMessageKey] = useState<string>(
     generateSecureRandomKey()
   );
@@ -174,6 +177,7 @@ export function ChatProvider({ children }: Props) {
 
         // --- Streaming text chunks ---
         if (parsed.message) {
+          setAwaitingResponse(false);
           messageContentRef.current += parsed.message;
           setAnimatedText((prev) => prev + parsed.message);
           return;
@@ -181,6 +185,7 @@ export function ChatProvider({ children }: Props) {
 
         // --- Tool calls ---
         if (parsed.tool_calls) {
+          setAwaitingResponse(false);
           const toolCalls = parsed.tool_calls;
           if (toolCalls && toolCalls.length > 0) {
             const firstTool = toolCalls[0];
@@ -196,6 +201,7 @@ export function ChatProvider({ children }: Props) {
 
         // --- Completion ---
         if (parsed.completed || parsed.type === "complete") {
+          setAwaitingResponse(false);
           const raw = messageContentRef.current;
           if (raw) {
             // Prefer backend-processed content (org-tag replacement) when available
@@ -213,6 +219,7 @@ export function ChatProvider({ children }: Props) {
 
         // --- Error ---
         if (parsed.type === "error") {
+          setAwaitingResponse(false);
           console.error("WS error event:", parsed.error);
         }
       } catch (e) {
@@ -343,6 +350,7 @@ export function ChatProvider({ children }: Props) {
           // is guaranteed to complete before dispatch is processed)
           wsSubscribe(token);
           wsDispatch(token);
+          setAwaitingResponse(true);
         }
       } catch (error) {
         console.error("Failed to send message", error);
@@ -401,6 +409,7 @@ export function ChatProvider({ children }: Props) {
     messageContentRef.current = "";
     setIsComplete(false);
     setLoading(false);
+    setAwaitingResponse(false);
     setUploadedDocuments([]);
     setCurrentMessageKey(generateSecureRandomKey());
     subscribedGroupsRef.current.clear();
@@ -481,6 +490,7 @@ export function ChatProvider({ children }: Props) {
       animatedText,
       isComplete,
       loading,
+      awaitingResponse,
       currentMessageKey,
       uploadedDocuments,
       sendMessage,
@@ -497,6 +507,7 @@ export function ChatProvider({ children }: Props) {
       animatedText,
       isComplete,
       loading,
+      awaitingResponse,
       currentMessageKey,
       uploadedDocuments,
       sendMessage,

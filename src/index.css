@@ -22,3 +22,15 @@
     display: none;  /* Safari and Chrome */
   }
 }
+
+/* Chat typing-indicator bounce */
+@keyframes chatBounce {
+  0%, 60%, 100% {
+    transform: translateY(0);
+    opacity: 0.4;
+  }
+  30% {
+    transform: translateY(-6px);
+    opacity: 1;
+  }
+}
