@@ -1,12 +1,11 @@
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useContext } from "react";
 import { IconSend2, IconLoader2, IconPaperclip, IconX } from "@tabler/icons-react";
 import { useNavigate } from "react-router-dom";
 import SEO from "../components/SEO";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
-import { getCSRFHeaders } from "../hooks/authentication_helper";
-
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://127.0.0.1:8003";
+import { useChatContext } from "../context/ChatContext";
+import { RequestFormContext } from "../context/RequestFormContext";
 
 const ALLOWED_EXTENSIONS = [
     "pdf", "csv", "jsonl", "xml", "txt", "json",
@@ -17,25 +16,24 @@ const ACCEPT_STRING = ALLOWED_EXTENSIONS.map(e => `.${e}`).join(",");
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB
 const MAX_FILES = 2;
 
-interface UploadedDocument {
-    s3_key: string;
-    filename: string;
-    content_type: string;
-    size?: number;
-}
-
 const Landing = () => {
     const [content, setContent] = useState<string>("");
     const [loading, setLoading] = useState<boolean>(false);
     const navigate = useNavigate();
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const fileInputRef = useRef<HTMLInputElement | null>(null);
-
-    // Document upload state
-    const [uploadedDocuments, setUploadedDocuments] = useState<UploadedDocument[]>([]);
     const [fileError, setFileError] = useState<string>("");
     const [uploading, setUploading] = useState<boolean>(false);
-    const accessTokenRef = useRef<string | null>(null);
+
+    const chatContext = useChatContext();
+    const requestForm = useContext(RequestFormContext);
+
+    // Reset both contexts on mount so we start with a clean slate
+    // (handles back-navigation from /request where old state would linger)
+    useEffect(() => {
+        chatContext.resetConversation();
+        requestForm?.reset();
+    }, []);
 
     useEffect(() => {
         if (textareaRef.current) {
@@ -50,7 +48,7 @@ const Landing = () => {
         const selected = Array.from(e.target.files || []);
         if (selected.length === 0) return;
 
-        if (uploadedDocuments.length + selected.length > MAX_FILES) {
+        if (chatContext.uploadedDocuments.length + selected.length > MAX_FILES) {
             setFileError(`U kunt maximaal ${MAX_FILES} documenten bijvoegen.`);
             if (fileInputRef.current) fileInputRef.current.value = "";
             return;
@@ -70,92 +68,50 @@ const Landing = () => {
             }
         }
 
-        // Upload each file immediately
+        // Upload each file immediately via ChatContext
         setUploading(true);
         try {
-            for (const file of selected) {
-                const formData = new FormData();
-                formData.append('file', file);
-                if (accessTokenRef.current) {
-                    formData.append('access_token', accessTokenRef.current);
-                }
-
-                const res = await fetch(`${BACKEND_URL}/api/conversations/upload/`, {
-                    method: 'POST',
-                    headers: getCSRFHeaders(),
-                    body: formData,
-                    credentials: 'include'
-                });
-
-                if (!res.ok) {
-                    const errData = await res.json().catch(() => ({}));
-                    throw new Error(errData.error || 'Upload mislukt');
-                }
-
-                const data = await res.json();
-                if (data.access_token) {
-                    accessTokenRef.current = data.access_token;
-                }
-                if (data.document) {
-                    setUploadedDocuments(prev => [...prev, data.document as UploadedDocument]);
-                }
-            }
+            await chatContext.uploadDocuments(selected);
         } catch (err) {
             setFileError(err instanceof Error ? err.message : 'Bestand uploaden mislukt');
         } finally {
             setUploading(false);
             if (fileInputRef.current) fileInputRef.current.value = "";
         }
-    }, [uploadedDocuments.length]);
+    }, [chatContext]);
 
     const removeDocument = useCallback(async (s3Key: string) => {
-        const token = accessTokenRef.current;
-        if (!token) return;
-
-        const res = await fetch(
-            `${BACKEND_URL}/api/conversations/${token}/documents/delete/`,
-            {
-                method: 'DELETE',
-                headers: getCSRFHeaders({ 'Content-Type': 'application/json' }),
-                body: JSON.stringify({ s3_key: s3Key }),
-                credentials: 'include'
-            }
-        );
-
-        if (res.ok || res.status === 204) {
-            setUploadedDocuments(prev => prev.filter(d => d.s3_key !== s3Key));
-        }
-    }, []);
+        await chatContext.removeDocument(s3Key);
+    }, [chatContext]);
 
     const submitContent = async () => {
         if (!content.trim()) return;
         setLoading(true);
         try {
-            // Send message via HTTP POST instead of WebSocket
-            const response = await fetch(`${BACKEND_URL}/api/conversations/send-message/`, {
-                method: 'POST',
-                headers: getCSRFHeaders({ 'Content-Type': 'application/json' }),
-                body: JSON.stringify({
-                    access_token: accessTokenRef.current || null,
-                    message: content
-                }),
-                credentials: 'include'
-            });
-
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}));
-                throw new Error(errorData.error || 'Failed to send message');
-            }
-
-            const data = await response.json();
-            // Navigate using the access_token
-            navigate(`/request?accessToken=${data.access_token}`);
+            // sendMessage updates chatContext.accessToken, but since it's async
+            // and state updates are batched, we need to watch for the token change.
+            await chatContext.sendMessage(content);
         } catch (error) {
             console.error('Error submitting content:', error);
-        } finally {
             setLoading(false);
         }
-    }
+        // Navigation will be handled by the effect below once accessToken is set
+    };
+
+    // Navigate to /request once accessToken is set (after sendMessage completes)
+    const hasNavigatedRef = useRef(false);
+    useEffect(() => {
+        if (chatContext.accessToken && loading && !hasNavigatedRef.current) {
+            hasNavigatedRef.current = true;
+            setLoading(false);
+            navigate(`/request?accessToken=${chatContext.accessToken}`);
+        }
+    }, [chatContext.accessToken, loading, navigate]);
+
+    // Reset navigation guard when landing page mounts fresh
+    useEffect(() => {
+        hasNavigatedRef.current = false;
+    }, []);
 
     return (
         <div className="min-h-screen flex flex-col">
@@ -192,9 +148,9 @@ const Landing = () => {
             </div>
 
             {/* Attached documents chips */}
-            {uploadedDocuments.length > 0 && (
+            {chatContext.uploadedDocuments.length > 0 && (
                 <div className="px-3 pt-2 flex flex-wrap gap-2">
-                    {uploadedDocuments.map((doc) => (
+                    {chatContext.uploadedDocuments.map((doc) => (
                         <span
                             key={doc.s3_key}
                             className="inline-flex items-center gap-1 bg-[#03689B]/10 text-[#154273] text-xs px-2 py-1 rounded-full"
@@ -230,7 +186,7 @@ const Landing = () => {
                 <button
                     className="px-1 py-4 flex-shrink-0 self-end text-[#154273] hover:text-[#03689B] transition-colors disabled:opacity-40"
                     onClick={() => fileInputRef.current?.click()}
-                    disabled={uploadedDocuments.length >= MAX_FILES || loading || uploading}
+                    disabled={chatContext.uploadedDocuments.length >= MAX_FILES || loading || uploading}
                     aria-label="Bestand bijvoegen"
                     title="Bestand bijvoegen"
                 >

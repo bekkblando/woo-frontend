@@ -1,9 +1,8 @@
 import { useContext, useEffect, useRef, useState, useCallback } from "react";
-import { useSearchParams } from "react-router-dom";
-import useChat from "../hooks/useChat";
 import TypewriterStreaming from "./ui/typewriter-streaming.tsx";
 import { IconPaperclip, IconSend2, IconX, IconLoader2 } from "@tabler/icons-react";
 import { RequestFormContext } from "../context/RequestFormContext.tsx";
+import { useChatContext, type FunctionDefinition } from "../context/ChatContext.tsx";
 import ReactMarkdown from "react-markdown";
 
 const ALLOWED_EXTENSIONS = [
@@ -15,13 +14,7 @@ const ACCEPT_STRING = ALLOWED_EXTENSIONS.map(e => `.${e}`).join(",");
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB
 const MAX_FILES = 2;
 
-interface ChatProps {
-    initialMessages?: { role: string; content: string }[] | null;
-}
-
-const Chat = ({ initialMessages }: ChatProps) => {
-    const [searchParams] = useSearchParams();
-    const accessToken = searchParams.get("accessToken");
+const Chat = () => {
     const [content, setContent] = useState<string>("");
     const [fileError, setFileError] = useState<string>("");
     const [uploading, setUploading] = useState<boolean>(false);
@@ -29,95 +22,138 @@ const Chat = ({ initialMessages }: ChatProps) => {
     const fileInputRef = useRef<HTMLInputElement | null>(null);
     const requestForm = useContext(RequestFormContext);
 
-    const functionCaller = async (_definition: { name: string; arguments: any }) => {
-        console.log("Function caller", _definition);
-        if (_definition.name === "woo_question_answered") {
-            console.log("Updating answer", _definition.arguments);
-            requestForm?.updateAnswer({
-                id: _definition.arguments.id,
-                woo_question: _definition.arguments.woo_question,
-                answer: _definition.arguments.answer,
-                chunks: _definition.arguments.chunks || [],
-                details: _definition.arguments.details || {},
-                answered: _definition.arguments.answered
-            });
-            return;
-        }
-        if (_definition.name === "woo_question_progress") {
-            const data = _definition.arguments;
-            if (data.woo_question_id && data.stage) {
-                requestForm?.updateQuestionProgress(data.woo_question_id, {
-                    stage: data.stage,
-                    detail: data.detail,
-                });
-            }
-            return;
-        }
-        if (_definition.name === "questions_added") {
-            const data = _definition.arguments;
-            if (!data.questions || !Array.isArray(data.questions) || !requestForm) return;
-
-            const newQuestionObjects = data.questions.map((q: any) => ({
-                id: q.id || 0,
-                question: q.question || "",
-                answer: q.answer ? {
-                    id: q.answer.id || 0,
-                    answer: q.answer.answer || "",
-                    chunks: q.answer.chunks || []
-                } : { id: 0, answer: "", chunks: [] },
-                answer_loading: !q.answer,
-                saved: true
-            }));
-
-            requestForm.setQuestions(prev => {
-                const existingTexts = new Set(prev.map(q => q.question));
-                const uniqueNewQuestions = newQuestionObjects.filter(
-                    (q: any) => !existingTexts.has(q.question)
-                );
-                if (uniqueNewQuestions.length === 0) return prev;
-                return [...prev, ...uniqueNewQuestions];
-            });
-        }
-    };
-
     const {
         messages,
         animatedText,
         sendMessage,
         currentMessageKey,
-        uploadedDocuments: chatUploadedDocuments,
-        removeDocument: chatRemoveDocument,
+        uploadedDocuments,
+        removeDocument,
         uploadDocuments,
-    } = useChat(accessToken, functionCaller, "Hello, how can I help you?", initialMessages);
+        setFunctionCallHandler,
+        loading: chatLoading,
+    } = useChatContext();
 
-    // Sync newly uploaded documents from useChat into the shared context
-    // We track previous length to only push new additions (avoiding overwriting context removals)
-    const prevChatDocsLengthRef = useRef(chatUploadedDocuments.length);
+    // Register a function-call handler that bridges WS events into
+    // RequestFormContext. This replaces the old `functionCaller` callback
+    // that was passed directly to useChat.
     useEffect(() => {
-        if (requestForm && chatUploadedDocuments.length > prevChatDocsLengthRef.current) {
-            // New documents were added in useChat — merge them into context
-            const newDocs = chatUploadedDocuments.slice(prevChatDocsLengthRef.current);
-            requestForm.setUploadedDocuments(prev => {
-                const existingKeys = new Set(prev.map(d => d.s3_key));
-                const toAdd = newDocs.filter(d => !existingKeys.has(d.s3_key));
-                return toAdd.length > 0 ? [...prev, ...toAdd] : prev;
-            });
-        }
-        prevChatDocsLengthRef.current = chatUploadedDocuments.length;
-    }, [chatUploadedDocuments]);
+        const handler = (def: FunctionDefinition) => {
+            if (def.name === "woo_question_answered") {
+                requestForm?.updateAnswer({
+                    id: def.arguments.id,
+                    woo_question: def.arguments.woo_question,
+                    answer: def.arguments.answer,
+                    chunks: def.arguments.chunks || [],
+                    details: def.arguments.details || {},
+                    answered: def.arguments.answered,
+                });
+                return;
+            }
+            if (def.name === "woo_question_progress") {
+                const data = def.arguments;
+                if (data.woo_question_id && data.stage) {
+                    requestForm?.updateQuestionProgress(data.woo_question_id, {
+                        stage: data.stage,
+                        detail: data.detail,
+                    });
+                }
+                return;
+            }
+            if (def.name === "questions_added") {
+                const data = def.arguments;
+                if (!data.questions || !Array.isArray(data.questions) || !requestForm) return;
+
+                const newQuestionObjects = data.questions.map((q: any) => ({
+                    id: q.id || 0,
+                    question: q.question || "",
+                    answer: q.answer
+                        ? {
+                              id: q.answer.id || 0,
+                              answer: q.answer.answer || "",
+                              chunks: q.answer.chunks || [],
+                          }
+                        : { id: 0, answer: "", chunks: [] },
+                    answer_loading: !q.answer,
+                    saved: true,
+                }));
+
+                requestForm.setQuestions((prev) => {
+                    const existingTexts = new Set(prev.map((q) => q.question));
+                    const uniqueNewQuestions = newQuestionObjects.filter(
+                        (q: any) => !existingTexts.has(q.question)
+                    );
+                    if (uniqueNewQuestions.length === 0) return prev;
+                    return [...prev, ...uniqueNewQuestions];
+                });
+            }
+            if (def.name === "load_conversation_data") {
+                // Called by ChatContext.loadConversation to hydrate
+                // RequestFormContext with questions + documents from the DB
+                if (!requestForm) return;
+                const { questions, documents } = def.arguments;
+
+                if (Array.isArray(questions)) {
+                    requestForm.setQuestions(
+                        questions.map((q: any) => ({
+                            id: q.id,
+                            question: q.question,
+                            answer: q.answer
+                                ? {
+                                      id: q.answer.id,
+                                      woo_question: q.id,
+                                      answer: q.answer.answer,
+                                      chunks: q.answer.chunks || [],
+                                      details: q.answer.details || {},
+                                      answered: q.answer.answered,
+                                  }
+                                : undefined,
+                            answer_loading: q.answer ? false : true,
+                            saved: true,
+                        }))
+                    );
+                }
+
+                if (Array.isArray(documents) && documents.length > 0) {
+                    requestForm.setUploadedDocuments(documents);
+                }
+            }
+        };
+
+        setFunctionCallHandler(handler);
+        return () => setFunctionCallHandler(null);
+    }, [requestForm, setFunctionCallHandler]);
+
+    // Sync uploaded documents from ChatContext into RequestFormContext.
+    // This covers two cases:
+    //   1. Documents already in ChatContext when Chat mounts (e.g. uploaded
+    //      on Landing before navigating to /request).
+    //   2. Documents added while Chat is mounted (uploaded via the chat input).
+    useEffect(() => {
+        if (!requestForm || uploadedDocuments.length === 0) return;
+        requestForm.setUploadedDocuments((prev) => {
+            const existingKeys = new Set(prev.map((d) => d.s3_key));
+            const toAdd = uploadedDocuments.filter(
+                (d) => !existingKeys.has(d.s3_key)
+            );
+            return toAdd.length > 0 ? [...prev, ...toAdd] : prev;
+        });
+    }, [uploadedDocuments, requestForm]);
 
     // Use context documents for display (shared with RequestForm)
-    const contextDocuments = requestForm?.uploadedDocuments ?? chatUploadedDocuments;
+    const contextDocuments = requestForm?.uploadedDocuments ?? uploadedDocuments;
 
-    // Remove from both useChat internal state and context
-    const handleRemoveDocument = useCallback(async (s3Key: string) => {
-        // Remove from context (which also calls the backend DELETE)
-        if (requestForm) {
-            await requestForm.removeUploadedDocument(s3Key);
-        } else {
-            await chatRemoveDocument(s3Key);
-        }
-    }, [chatRemoveDocument, requestForm]);
+    // Remove from both ChatContext and RequestFormContext
+    const handleRemoveDocument = useCallback(
+        async (s3Key: string) => {
+            if (requestForm) {
+                await requestForm.removeUploadedDocument(s3Key);
+            } else {
+                await removeDocument(s3Key);
+            }
+        },
+        [removeDocument, requestForm]
+    );
 
     useEffect(() => {
         if (bottomOfChatContainer.current) {
@@ -126,44 +162,49 @@ const Chat = ({ initialMessages }: ChatProps) => {
     }, [messages, animatedText]);
 
     // --- File handling - upload immediately on selection ---
-    const handleFileSelect = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
-        setFileError("");
-        const selected = Array.from(e.target.files || []);
-        if (selected.length === 0) return;
+    const handleFileSelect = useCallback(
+        async (e: React.ChangeEvent<HTMLInputElement>) => {
+            setFileError("");
+            const selected = Array.from(e.target.files || []);
+            if (selected.length === 0) return;
 
-        // Check total count
-        if (contextDocuments.length + selected.length > MAX_FILES) {
-            setFileError(`U kunt maximaal ${MAX_FILES} documenten bijvoegen.`);
-            if (fileInputRef.current) fileInputRef.current.value = "";
-            return;
-        }
-
-        // Validate each file
-        for (const file of selected) {
-            const ext = file.name.split(".").pop()?.toLowerCase() || "";
-            if (!ALLOWED_EXTENSIONS.includes(ext)) {
-                setFileError(`Bestandstype '.${ext}' is niet toegestaan.`);
+            // Check total count
+            if (contextDocuments.length + selected.length > MAX_FILES) {
+                setFileError(`U kunt maximaal ${MAX_FILES} documenten bijvoegen.`);
                 if (fileInputRef.current) fileInputRef.current.value = "";
                 return;
             }
-            if (file.size > MAX_FILE_SIZE) {
-                setFileError(`'${file.name}' is groter dan 5MB.`);
-                if (fileInputRef.current) fileInputRef.current.value = "";
-                return;
-            }
-        }
 
-        // Upload files immediately to the server
-        setUploading(true);
-        try {
-            await uploadDocuments(selected);
-        } catch (err) {
-            setFileError(err instanceof Error ? err.message : 'Bestand uploaden mislukt');
-        } finally {
-            setUploading(false);
-            if (fileInputRef.current) fileInputRef.current.value = "";
-        }
-    }, [contextDocuments.length, uploadDocuments]);
+            // Validate each file
+            for (const file of selected) {
+                const ext = file.name.split(".").pop()?.toLowerCase() || "";
+                if (!ALLOWED_EXTENSIONS.includes(ext)) {
+                    setFileError(`Bestandstype '.${ext}' is niet toegestaan.`);
+                    if (fileInputRef.current) fileInputRef.current.value = "";
+                    return;
+                }
+                if (file.size > MAX_FILE_SIZE) {
+                    setFileError(`'${file.name}' is groter dan 5MB.`);
+                    if (fileInputRef.current) fileInputRef.current.value = "";
+                    return;
+                }
+            }
+
+            // Upload files immediately to the server
+            setUploading(true);
+            try {
+                await uploadDocuments(selected);
+            } catch (err) {
+                setFileError(
+                    err instanceof Error ? err.message : "Bestand uploaden mislukt"
+                );
+            } finally {
+                setUploading(false);
+                if (fileInputRef.current) fileInputRef.current.value = "";
+            }
+        },
+        [contextDocuments.length, uploadDocuments]
+    );
 
     const submitContent = () => {
         if (!content.trim()) return;
@@ -172,33 +213,52 @@ const Chat = ({ initialMessages }: ChatProps) => {
         setFileError("");
     };
 
+    if (chatLoading) {
+        return (
+            <div className="rounded-lg flex flex-col bg-[#EFF7FC] border-2 border-[#03689B]">
+                <div className="flex-1 overflow-y-auto p-2 md:p-8 flex items-center justify-center min-h-[200px]">
+                    <div className="text-[#154273]">Loading conversation...</div>
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div className="rounded-lg flex flex-col bg-[#EFF7FC] border-2 border-[#03689B]">
             <div className="flex-1 overflow-y-auto p-2 md:p-8">
-                {messages.map((message: { role: string; content: string }, index: number) => (
-                    <div key={index} className={`flex ${message.role === "assistant" ? "justify-start" : "justify-end"} w-full mb-2`}>
-                        <div className="max-w-[80%] bg-[#EFF7FC] border-2 border-[#03689B] p-2 rounded-md text-[#154273] prose prose-sm prose-blue max-w-none [&_ol]:list-decimal [&_ol]:pl-5 [&_ul]:list-disc [&_ul]:pl-5 [&_li]:my-1 [&_p]:my-2">
-                            {message.content === animatedText ? null : (
-                                <ReactMarkdown
-                                    components={{
-                                        a: ({ href, children }) => (
-                                            <a
-                                                href={href}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                className="text-blue-600 underline hover:text-blue-800"
-                                            >
-                                                {children}
-                                            </a>
-                                        ),
-                                    }}
-                                >
-                                    {message.content}
-                                </ReactMarkdown>
-                            )}
+                {messages.map(
+                    (message: { role: string; content: string }, index: number) => (
+                        <div
+                            key={index}
+                            className={`flex ${
+                                message.role === "assistant"
+                                    ? "justify-start"
+                                    : "justify-end"
+                            } w-full mb-2`}
+                        >
+                            <div className="max-w-[80%] bg-[#EFF7FC] border-2 border-[#03689B] p-2 rounded-md text-[#154273] prose prose-sm prose-blue max-w-none [&_ol]:list-decimal [&_ol]:pl-5 [&_ul]:list-disc [&_ul]:pl-5 [&_li]:my-1 [&_p]:my-2">
+                                {message.content === animatedText ? null : (
+                                    <ReactMarkdown
+                                        components={{
+                                            a: ({ href, children }) => (
+                                                <a
+                                                    href={href}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="text-blue-600 underline hover:text-blue-800"
+                                                >
+                                                    {children}
+                                                </a>
+                                            ),
+                                        }}
+                                    >
+                                        {message.content}
+                                    </ReactMarkdown>
+                                )}
+                            </div>
                         </div>
-                    </div>
-                ))}
+                    )
+                )}
                 {animatedText !== "" && (
                     <TypewriterStreaming
                         currentMessageKey={currentMessageKey}
@@ -269,7 +329,11 @@ const Chat = ({ initialMessages }: ChatProps) => {
                         if (e.key === "Enter") submitContent();
                     }}
                 />
-                <button className="px-3 py-1" onClick={submitContent} aria-label="Send">
+                <button
+                    className="px-3 py-1"
+                    onClick={submitContent}
+                    aria-label="Send"
+                >
                     <IconSend2 className="stroke-[#03689B]" />
                 </button>
             </div>

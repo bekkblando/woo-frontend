@@ -1,6 +1,7 @@
 import './App.css'
 import { Routes, Route } from 'react-router-dom'
 import { RequestFormProvider } from './context/RequestFormContext'
+import { ChatProvider } from './context/ChatContext'
 import Landing from './pages/Landing'
 import RequestMaker from './pages/RequestMaker'
 import Finalize from './pages/Finalize'
@@ -23,18 +24,20 @@ const AuthenticationHelper = () => {
 function App() {
   return (
     <RequestFormProvider>
-      <AuthenticationHelper />
-      <Routes>
-        <Route path="/" element={<Landing />} />
-        <Route path="/request" element={<RequestMaker />} />
-        <Route path="/finalize" element={<Finalize />} />
-        <Route path="/completed-request" element={<CompletedRequest />} />
-        <Route path="/status" element={<Status />} />
-        <Route path="/admin" element={<Admin />} />
-        <Route path="/privacy" element={<Privacy />} />
-        <Route path="/document" element={<DocumentViewer />} />
-        <Route path="/download" element={<DocumentDownload />} />
-      </Routes>
+      <ChatProvider>
+        <AuthenticationHelper />
+        <Routes>
+          <Route path="/" element={<Landing />} />
+          <Route path="/request" element={<RequestMaker />} />
+          <Route path="/finalize" element={<Finalize />} />
+          <Route path="/completed-request" element={<CompletedRequest />} />
+          <Route path="/status" element={<Status />} />
+          <Route path="/admin" element={<Admin />} />
+          <Route path="/privacy" element={<Privacy />} />
+          <Route path="/document" element={<DocumentViewer />} />
+          <Route path="/download" element={<DocumentDownload />} />
+        </Routes>
+      </ChatProvider>
     </RequestFormProvider>
   )
 }
