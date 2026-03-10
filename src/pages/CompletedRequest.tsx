@@ -1,24 +1,66 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useContext } from "react";
 import { useSearchParams } from "react-router-dom";
 import { IconLoader2 } from "@tabler/icons-react";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import SEO from "../components/SEO";
 import RequestForm from "../components/RequestForm";
-import { useChatContext } from "../context/ChatContext";
+import { RequestFormContext } from "../context/RequestFormContext";
+
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://127.0.0.1:8003";
 
 const CompletedRequest = () => {
     const [searchParams] = useSearchParams();
-    const { loadConversation, loading } = useChatContext();
-    const [initialLoad, setInitialLoad] = useState(true);
+    const requestForm = useContext(RequestFormContext);
+    const [loading, setLoading] = useState(false);
 
     useEffect(() => {
-        const accessToken = searchParams.get("accessToken");
-        if (accessToken && initialLoad) {
-            setInitialLoad(false);
-            loadConversation(accessToken);
-        }
-    }, [searchParams, loadConversation, initialLoad]);
+        const fetchConversation = async () => {
+            setLoading(true);
+            const accessToken = searchParams.get("accessToken");
+            if (accessToken && requestForm) {
+                try {
+                    const response = await fetch(`${BACKEND_URL}/api/conversations/${accessToken}/`, { credentials: 'include' });
+                    if (response.ok) {
+                        const data = await response.json();
+                        if (data.documents && data.documents.length > 0) {
+                            requestForm.setUploadedDocuments(data.documents);
+                        }
+                        if (data.woo_request?.questions) {
+                            requestForm.setQuestions(
+                                data.woo_request.questions.map((q: any) => ({
+                                    id: q.id,
+                                    question: q.question,
+                                    answer: q.answer
+                                        ? {
+                                              id: q.answer.id,
+                                              woo_question: q.id,
+                                              answer: q.answer.answer,
+                                              chunks: q.answer.chunks || [],
+                                              details: q.answer.details || {},
+                                              answered: q.answer.answered,
+                                          }
+                                        : undefined,
+                                    status: q.status,
+                                    answer_loading: q.status === "processing" || q.status === "pending",
+                                    answer_failed: q.status === "failed",
+                                    error_message: q.error_message || "",
+                                    saved: true,
+                                }))
+                            );
+                        }
+                    } else {
+                        console.error('Failed to fetch conversation');
+                    }
+                } catch (error) {
+                    console.error('Error fetching conversation:', error);
+                } finally {
+                    setLoading(false);
+                }
+            }
+        };
+        fetchConversation();
+    }, [searchParams, requestForm]);
 
     return (
         <div className="min-h-screen flex flex-col">
