@@ -60,7 +60,7 @@ const CompletedRequest = () => {
             }
         };
         fetchConversation();
-    }, [searchParams, requestForm]);
+    }, [searchParams]);
 
     return (
         <div className="min-h-screen flex flex-col">
