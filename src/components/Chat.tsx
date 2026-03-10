@@ -232,12 +232,17 @@ const Chat = () => {
                     (message: { role: string; content: string }, index: number) => (
                         <div
                             key={index}
-                            className={`flex ${
+                            className={`flex flex-col ${
                                 message.role === "assistant"
-                                    ? "justify-start"
-                                    : "justify-end"
+                                    ? "items-start ml-[-5px] md:ml-[-.5rem]"
+                                    : "items-end ml-[5px] md:ml-[.5rem]"
                             } w-full mb-2`}
                         >
+                            <span className={`text-xs text-gray-500 mb-1 ${
+                                message.role === "assistant" ? "ml-0" : "mr-0"
+                            }`}>
+                                {message.role === "assistant" ? "Assistent" : "Jij"}
+                            </span>
                             <div className="max-w-[80%] bg-[#EFF7FC] border-2 border-[#03689B] p-2 rounded-md text-[#154273] prose prose-sm prose-blue max-w-none [&_ol]:list-decimal [&_ol]:pl-5 [&_ul]:list-disc [&_ul]:pl-5 [&_li]:my-1 [&_p]:my-2">
                                 {message.content === animatedText ? null : (
                                     <ReactMarkdown

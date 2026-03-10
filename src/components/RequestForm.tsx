@@ -318,24 +318,29 @@ const RequestForm = ({ finalize = false }: { finalize?: boolean }) => {
     // Build appendix data grouped by document, with page references underneath
     const appendixByDocument = useMemo(() => {
         if (!requestForm) return [];
-        const docMap = new Map<string, Set<number>>();
+        const docMap = new Map<string, { pages: Set<number>; original_url?: string }>();
 
         requestForm.questions.forEach((question) => {
             if (question.answer?.details?.blocks) {
                 question.answer.details.blocks.forEach((block) => {
                     if (block.type === 'evidence' && block.document_id && block.page_number !== undefined) {
                         if (!docMap.has(block.document_id)) {
-                            docMap.set(block.document_id, new Set());
+                            docMap.set(block.document_id, { pages: new Set(), original_url: block.original_url });
                         }
-                        docMap.get(block.document_id)!.add(block.page_number);
+                        const entry = docMap.get(block.document_id)!;
+                        entry.pages.add(block.page_number);
+                        if (!entry.original_url && block.original_url) {
+                            entry.original_url = block.original_url;
+                        }
                     }
                 });
             }
         });
 
-        return Array.from(docMap.entries()).map(([docId, pages]) => ({
+        return Array.from(docMap.entries()).map(([docId, data]) => ({
             document_id: docId,
-            pages: Array.from(pages).sort((a, b) => a - b),
+            pages: Array.from(data.pages).sort((a, b) => a - b),
+            original_url: data.original_url,
         }));
     }, [requestForm?.questions]);
 
@@ -485,13 +490,21 @@ const RequestForm = ({ finalize = false }: { finalize?: boolean }) => {
                             <p className="text-xs text-gray-600 mb-3">
                                 De volgende documenten worden in de antwoorden genoemd. Klik op een pagina om het te bekijken.
                             </p>
-                            <table className="w-full text-sm border-collapse">
+                            <table className="w-full text-sm border-collapse table-fixed">
+                                <colgroup>
+                                    <col className="w-[30px]" />
+                                    <col />
+                                    <col className="w-[120px]" />
+                                    <col className="w-[100px]" />
+                                    <col className="w-[70px]" />
+                                </colgroup>
                                 <thead>
                                     <tr className="border-b border-[#738DA7]">
-                                        <th className="text-left py-2 pr-3 text-[#154273] font-semibold w-[24px]">#</th>
+                                        <th className="text-left py-2 pr-2 text-[#154273] font-semibold">#</th>
                                         <th className="text-left py-2 pr-3 text-[#154273] font-semibold">Document</th>
                                         <th className="text-left py-2 pr-3 text-[#154273] font-semibold">Pagina's</th>
-                                        <th className="text-center py-2 text-[#154273] font-semibold w-[40px]">Download</th>
+                                        <th className="text-center py-2 pr-3 text-[#154273] font-semibold">Openbarheid</th>
+                                        <th className="text-center py-2 text-[#154273] font-semibold">Download</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -499,13 +512,14 @@ const RequestForm = ({ finalize = false }: { finalize?: boolean }) => {
                                         const displayName = documentNames[doc.document_id] || `Document ${doc.document_id.slice(0, 8)}…`;
                                         return (
                                             <tr key={doc.document_id} className="border-b border-gray-200">
-                                                <td className="py-2 pr-3 text-[#154273] font-medium align-top">{idx + 1}.</td>
-                                                <td className="py-2 pr-3 align-top">
+                                                <td className="py-2 pr-2 text-[#154273] font-medium align-top">{idx + 1}.</td>
+                                                <td className="py-2 pr-3 align-top overflow-hidden">
                                                     <a
                                                         href={`/document?documentId=${doc.document_id}&page=0`}
                                                         target="_blank"
                                                         rel="noopener noreferrer"
-                                                        className="text-[#03689B] hover:underline block break-words text-sm"
+                                                        className="text-[#03689B] hover:underline block text-sm break-words overflow-wrap-anywhere"
+                                                        style={{ overflowWrap: 'anywhere', wordBreak: 'break-word' }}
                                                         title={`Bekijk ${displayName}`}
                                                     >
                                                         {displayName}
@@ -525,6 +539,21 @@ const RequestForm = ({ finalize = false }: { finalize?: boolean }) => {
                                                             </a>
                                                         ))}
                                                     </div>
+                                                </td>
+                                                <td className="py-2 pr-3 align-top text-center">
+                                                    {doc.original_url ? (
+                                                        <a
+                                                            href={doc.original_url}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            className="text-[#03689B] hover:underline text-xs"
+                                                            title="Bekijk op Open Overheid"
+                                                        >
+                                                            Bekijk →
+                                                        </a>
+                                                    ) : (
+                                                        <span className="text-gray-400 text-xs">—</span>
+                                                    )}
                                                 </td>
                                                 <td className="py-2 align-top text-center">
                                                     <button

@@ -17,6 +17,10 @@ export type Answer = {
       chunk_id?: string;
       document_id?: string;
       page_number?: number;
+      document_name?: string;
+      document_date?: string;
+      document_description?: string;
+      original_url?: string;
     }>;
   };
   chunks?: Array<{

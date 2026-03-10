@@ -13,7 +13,7 @@ const PIPELINE_STAGES: { key: string; label: string }[] = [
     { key: 'generating_queries', label: 'Zoekquery\u2019s genereren' },
     { key: 'searching', label: 'Zoeken naar informatie' },
     { key: 'evaluating', label: 'Resultaten evalueren' },
-    { key: 'filtering', label: 'Relevante bronnen selecteren' },
+    { key: 'filtering', label: 'Relevante pagina\u2019s selecteren' },
     { key: 'extracting', label: 'Citaten extraheren' },
     { key: 'synthesizing', label: 'Antwoord formuleren' },
     { key: 'formatting', label: 'Citaten opmaken' },
