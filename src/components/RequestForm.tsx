@@ -1,8 +1,9 @@
-import { useContext, useState, useCallback, useMemo } from 'react';
+import { useContext, useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { IconChevronDown, IconDownload, IconPaperclip, IconX } from '@tabler/icons-react';
+import { IconChevronDown, IconDownload, IconLoader2, IconPaperclip, IconX } from '@tabler/icons-react';
 import { RequestFormContext } from '../context/RequestFormContext';
 import type { Answer } from '../context/RequestFormContext';
+import { useChatContext } from '../context/ChatContext';
 import StatusBar from './ui/status-bar';
 import PDFModal from './PDFModal';
 import EmailModal from './EmailModal';
@@ -231,9 +232,12 @@ const AnswerViewer = ({ answer, documentNames }: { answer: Answer; documentNames
 
 const RequestForm = ({ finalize = false, readOnly = false }: { finalize?: boolean; readOnly?: boolean }) => {
     const requestForm = useContext(RequestFormContext);
+    const { setPdfReadyHandler, wsSubscribe } = useChatContext();
     const uploadedDocuments = requestForm?.uploadedDocuments ?? [];
     const onRemoveDocument = requestForm?.removeUploadedDocument;
     const [submitting, setSubmitting] = useState(false);
+    const [pdfLoading, setPdfLoading] = useState(false);
+    const pdfTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const [searchParams] = useSearchParams();
     const navigate = useNavigate();
     const [isEmailModalOpen, setIsEmailModalOpen] = useState(false);
@@ -365,27 +369,81 @@ const RequestForm = ({ finalize = false, readOnly = false }: { finalize?: boolea
         });
     };
 
+    // Ensure WS is subscribed for this access_token (needed on Finalize/CompletedRequest pages
+    // where Chat.tsx is not mounted and therefore doesn't call wsSubscribe itself).
+    useEffect(() => {
+        if (accessToken) {
+            wsSubscribe(accessToken);
+        }
+    }, [accessToken, wsSubscribe]);
+
+    // Cleanup timeout on unmount
+    useEffect(() => {
+        return () => {
+            if (pdfTimeoutRef.current) clearTimeout(pdfTimeoutRef.current);
+            setPdfReadyHandler(null);
+        };
+    }, [setPdfReadyHandler]);
+
     const handleDownloadPdf = async () => {
         if (!accessToken) {
             toast.error('Access token niet gevonden');
             return;
         }
-        try {
-            const response = await fetch(`${BACKEND_URL}/api/woo-requests/${accessToken}/download-pdf/`, { credentials: 'include' });
-            if (!response.ok) {
-                throw new Error('Fout bij downloaden van PDF');
+        if (pdfLoading) return;
+
+        setPdfLoading(true);
+
+        // Register the one-shot WS handler
+        setPdfReadyHandler((result) => {
+            // Clear safety timeout
+            if (pdfTimeoutRef.current) {
+                clearTimeout(pdfTimeoutRef.current);
+                pdfTimeoutRef.current = null;
             }
-            const blob = await response.blob();
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `WOO_rapport.pdf`;
-            document.body.appendChild(a);
-            a.click();
-            a.remove();
-            window.URL.revokeObjectURL(url);
+            setPdfReadyHandler(null);
+            setPdfLoading(false);
+
+            if (result.url) {
+                // Trigger browser download from presigned S3 URL
+                const a = document.createElement('a');
+                a.href = result.url;
+                a.download = 'WOO_rapport.pdf';
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+            } else {
+                toast.error(result.error || 'Fout bij genereren van PDF');
+            }
+        });
+
+        // Safety timeout: 3 minutes
+        pdfTimeoutRef.current = setTimeout(() => {
+            setPdfReadyHandler(null);
+            setPdfLoading(false);
+            toast.error('PDF generatie duurde te lang. Probeer het opnieuw.');
+        }, 3 * 60 * 1000);
+
+        try {
+            const response = await fetch(
+                `${BACKEND_URL}/api/woo-requests/${accessToken}/generate-pdf/`,
+                {
+                    method: 'POST',
+                    headers: getCSRFHeaders({ 'Content-Type': 'application/json' }),
+                    credentials: 'include',
+                }
+            );
+            if (!response.ok) {
+                throw new Error('Fout bij starten van PDF generatie');
+            }
         } catch (error) {
-            console.error('Error downloading PDF:', error);
+            console.error('Error requesting PDF generation:', error);
+            if (pdfTimeoutRef.current) {
+                clearTimeout(pdfTimeoutRef.current);
+                pdfTimeoutRef.current = null;
+            }
+            setPdfReadyHandler(null);
+            setPdfLoading(false);
             toast.error('Fout bij downloaden van PDF');
         }
     };
@@ -578,8 +636,8 @@ const RequestForm = ({ finalize = false, readOnly = false }: { finalize?: boolea
                     <div className="text-sm w-full md:w-8/10 flex flex-col gap-2 justify-between text-left items-center">
                         <div className="text-2xl font-bold self-start leading-none">Download jouw verzoek</div>
                         <div className="self-start">Download hier het verzoek als pdf-bestand, inclusief bronverwijzingen en bijlagen.</div>
-                        <button onClick={handleDownloadPdf} disabled={submitting} className="text-base display-inline-block bg-[#154273] mt-2 self-start text-white px-4 py-2">
-                            Download verzoek
+                        <button onClick={handleDownloadPdf} disabled={submitting || pdfLoading} className="text-base display-inline-block bg-[#154273] mt-2 self-start text-white px-4 py-2 flex items-center gap-2">
+                            {pdfLoading ? <><IconLoader2 className="animate-spin h-4 w-4" /> PDF wordt gegenereerd...</> : 'Download verzoek'}
                         </button>
                     </div>
 
@@ -604,8 +662,8 @@ const RequestForm = ({ finalize = false, readOnly = false }: { finalize?: boolea
                 <div className="text-sm w-full md:w-8/10 flex flex-col gap-2 justify-between text-left items-center">
                     <div className="text-2xl font-bold self-start leading-none">Download jouw verzoek</div>
                     <div className="self-start">Download hier het verzoek als pdf-bestand, inclusief bronverwijzingen en bijlagen. Je kunt nu zelf besluiten hoe je verder wilt gaan.</div>
-                    <button onClick={handleDownloadPdf} disabled={submitting} className="text-base display-inline-block bg-[#154273] mt-2 self-start text-white px-4 py-2">
-                    Download verzoek
+                    <button onClick={handleDownloadPdf} disabled={submitting || pdfLoading} className="text-base display-inline-block bg-[#154273] mt-2 self-start text-white px-4 py-2 flex items-center gap-2">
+                    {pdfLoading ? <><IconLoader2 className="animate-spin h-4 w-4" /> PDF wordt gegenereerd...</> : 'Download verzoek'}
                     </button>
                 </div>
 
@@ -634,8 +692,8 @@ const RequestForm = ({ finalize = false, readOnly = false }: { finalize?: boolea
             ) : (
                 <>
             <div className="text-sm w-full flex justify-between items-center pt-6">Download jouw verzoek als pdf
-                <button onClick={handleDownloadPdf} disabled={submitting} className="text-sm display-inline-block bg-[#154273] text-white px-2 py-1">
-                    Download
+                <button onClick={handleDownloadPdf} disabled={submitting || pdfLoading} className="text-sm display-inline-block bg-[#154273] text-white px-2 py-1 flex items-center gap-1">
+                    {pdfLoading ? <><IconLoader2 className="animate-spin h-3 w-3" /> Genereren...</> : 'Download'}
                 </button>
             </div>
 

@@ -64,6 +64,17 @@ export interface ChatContextValue {
   setFunctionCallHandler: (
     handler: ((def: FunctionDefinition) => void) | null
   ) => void;
+
+  /**
+   * Register a one-shot callback for pdf_ready / pdf_failed WS events.
+   * Called with { url: string } on success or { error: string } on failure.
+   */
+  setPdfReadyHandler: (
+    handler: ((result: { url?: string; error?: string }) => void) | null
+  ) => void;
+
+  /** Subscribe the WS connection to a conversation group (idempotent). */
+  wsSubscribe: (token: string) => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -122,6 +133,9 @@ export function ChatProvider({ children }: Props) {
   const accessTokenRef = useRef<string | null>(null);
   const functionCallHandlerRef = useRef<
     ((def: FunctionDefinition) => void) | null
+  >(null);
+  const pdfReadyHandlerRef = useRef<
+    ((result: { url?: string; error?: string }) => void) | null
   >(null);
   // Accumulated message content across WS chunks (closed-over in onmessage)
   const messageContentRef = useRef<string>("");
@@ -186,6 +200,16 @@ export function ChatProvider({ children }: Props) {
             name: "questions_added",
             arguments: parsed.data,
           });
+          return;
+        }
+
+        // --- PDF generation events ---
+        if (parsed.type === "pdf_ready") {
+          pdfReadyHandlerRef.current?.({ url: parsed.data?.url });
+          return;
+        }
+        if (parsed.type === "pdf_failed") {
+          pdfReadyHandlerRef.current?.({ error: parsed.data?.error || "PDF generation failed" });
           return;
         }
 
@@ -565,6 +589,13 @@ export function ChatProvider({ children }: Props) {
     []
   );
 
+  const setPdfReadyHandler = useCallback(
+    (handler: ((result: { url?: string; error?: string }) => void) | null) => {
+      pdfReadyHandlerRef.current = handler;
+    },
+    []
+  );
+
   // ---- context value ----
 
   const value = useMemo<ChatContextValue>(
@@ -584,6 +615,8 @@ export function ChatProvider({ children }: Props) {
       uploadDocuments,
       removeDocument,
       setFunctionCallHandler,
+      setPdfReadyHandler,
+      wsSubscribe,
     }),
     [
       accessToken,
@@ -601,6 +634,8 @@ export function ChatProvider({ children }: Props) {
       uploadDocuments,
       removeDocument,
       setFunctionCallHandler,
+      setPdfReadyHandler,
+      wsSubscribe,
     ]
   );
 
