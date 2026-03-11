@@ -16,9 +16,16 @@ const Status = () => {
                 canonicalUrl="/status"
             />
             <Navbar />
-            <div className="flex flex-col items-center gap-8 p-8 mt-8">
-                <h1 className="text-2xl font-bold text-[#154273]">Status</h1>
-                <StatusBar size="lg" currentStep={2} />
+            <div className="flex flex-col items-center gap-8 p-8 mt-8 max-w-xl mx-auto w-full">
+                <div className="text-center">
+                    <h1 className="text-2xl font-bold text-[#154273]">Status van uw verzoek</h1>
+                    <p className="text-sm text-[#154273]/60 mt-2">
+                        Hieronder ziet u de voortgang van uw informatieverzoek.
+                    </p>
+                </div>
+                <div className="w-full bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
+                    <StatusBar size="lg" currentStep={2} />
+                </div>
             </div>
             <Footer />
         </div>
