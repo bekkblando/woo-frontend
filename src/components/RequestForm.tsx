@@ -405,9 +405,14 @@ const RequestForm = ({ finalize = false, readOnly = false }: { finalize?: boolea
             setPdfLoading(false);
 
             if (result.url) {
-                // S3 object has Content-Disposition: attachment, so opening the
-                // presigned URL triggers a download rather than navigation.
-                window.open(result.url, '_blank');
+                // Use a hidden iframe to trigger the download without any
+                // visible tab/window flash. The S3 object has
+                // Content-Disposition: attachment so the browser saves the file.
+                const iframe = document.createElement('iframe');
+                iframe.style.display = 'none';
+                iframe.src = result.url;
+                document.body.appendChild(iframe);
+                setTimeout(() => iframe.remove(), 60_000);
             } else {
                 toast.error(result.error || 'Fout bij genereren van PDF');
             }
