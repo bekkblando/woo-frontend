@@ -405,13 +405,9 @@ const RequestForm = ({ finalize = false, readOnly = false }: { finalize?: boolea
             setPdfLoading(false);
 
             if (result.url) {
-                // Trigger browser download from presigned S3 URL
-                const a = document.createElement('a');
-                a.href = result.url;
-                a.download = 'WOO_rapport.pdf';
-                document.body.appendChild(a);
-                a.click();
-                a.remove();
+                // S3 object has Content-Disposition: attachment, so opening the
+                // presigned URL triggers a download rather than navigation.
+                window.open(result.url, '_blank');
             } else {
                 toast.error(result.error || 'Fout bij genereren van PDF');
             }
